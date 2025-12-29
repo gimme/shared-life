@@ -16,12 +16,14 @@ public class SharedLife {
     private boolean initialized = false;
 
     private float health;
+    private float absorption;
     private int food;
     private float saturation;
     private int thirst;
     private int quenched;
 
     private float previousHealth;
+    private float previousAbsorption;
     private int previousFood;
     private float previousSaturation;
     private int previousThirst;
@@ -38,6 +40,7 @@ public class SharedLife {
     public void initialize(Player player) {
         this.initialized = true;
         this.health = player.getHealth();
+        this.absorption = player.getAbsorptionAmount();
         this.food = player.getFoodData().getFoodLevel();
         this.saturation = player.getFoodData().getSaturationLevel();
         this.thirst = thirstPlugin.getThirst(player);
@@ -48,6 +51,7 @@ public class SharedLife {
 
     private void resetPreviousStats() {
         this.previousHealth = this.health;
+        this.previousAbsorption = this.absorption;
         this.previousFood = this.food;
         this.previousSaturation = this.saturation;
         this.previousThirst = this.thirst;
@@ -74,6 +78,7 @@ public class SharedLife {
         var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
 
         if (playerSyncedStats.health()) player.setHealth(this.health);
+        if (playerSyncedStats.absorption()) player.setAbsorptionAmount(this.absorption);
         if (playerSyncedStats.food()) playerFoodData.setFoodLevel(this.food);
         if (playerSyncedStats.saturation()) playerFoodData.setSaturation(this.saturation);
 
@@ -88,12 +93,14 @@ public class SharedLife {
         var playerFoodData = player.getFoodData();
 
         var healthChange = player.getHealth() - previousHealth;
+        var absorptionChange = player.getAbsorptionAmount() - previousAbsorption;
         var foodChange = playerFoodData.getFoodLevel() - previousFood;
         var saturationChange = playerFoodData.getSaturationLevel() - previousSaturation;
         var thirstChange = thirstPlugin.getThirst(player) - previousThirst;
         var quenchedChange = thirstPlugin.getQuenched(player) - previousQuenched;
 
         this.health = Math.max(0, this.health + healthChange);
+        this.absorption = Math.max(0, this.absorption + absorptionChange);
         this.food = Math.max(0, this.food + foodChange);
         this.saturation = Math.max(0, this.saturation + saturationChange);
         this.thirst = Math.max(0, this.thirst + thirstChange);

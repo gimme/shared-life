@@ -10,6 +10,10 @@ public class ForgeConfig implements Config {
             .comment("If health should be synced between players")
             .define("syncHealth", true);
 
+    private static final ForgeConfigSpec.BooleanValue SYNC_ABSORPTION = BUILDER
+            .comment("If absorption should be synced between players")
+            .define("syncAbsorption", true);
+
     private static final ForgeConfigSpec.BooleanValue SYNC_FOOD = BUILDER
             .comment("If food level should be synced between players")
             .define("syncFood", true);
@@ -31,6 +35,11 @@ public class ForgeConfig implements Config {
     @Override
     public boolean syncHealth() {
         return SYNC_HEALTH.get();
+    }
+
+    @Override
+    public boolean syncAbsorption() {
+        return SYNC_ABSORPTION.get();
     }
 
     @Override

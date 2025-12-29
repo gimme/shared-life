@@ -5,6 +5,7 @@ package dev.gimme.sharedlife.domain.config;
  */
 public record PlayerSyncedStats(
         boolean health,
+        boolean absorption,
         boolean food,
         boolean saturation,
         boolean thirst,

@@ -6,6 +6,8 @@ class ModGameRules {
 
     static final GameRules.Key<GameRules.BooleanValue> SYNC_HEALTH =
             GameRules.register("syncHealth", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
+    static final GameRules.Key<GameRules.BooleanValue> SYNC_ABSORPTION =
+            GameRules.register("syncAbsorption", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
     static final GameRules.Key<GameRules.BooleanValue> SYNC_FOOD =
             GameRules.register("syncFood", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
     static final GameRules.Key<GameRules.BooleanValue> SYNC_SATURATION =
