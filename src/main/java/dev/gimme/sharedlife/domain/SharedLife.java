@@ -4,10 +4,10 @@ import com.mojang.logging.LogUtils;
 import dev.gimme.sharedlife.domain.config.PlayerSyncStatusChecker;
 import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import net.minecraft.core.Holder;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
-import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
 /**
@@ -15,8 +15,8 @@ import org.slf4j.Logger;
  */
 public class SharedLife {
 
-    public static final DamageType DEATH_TYPE = new DamageType("sharedlife_death", 0);
-    public static final DamageSource DEATH_SOURCE = new DamageSource(Holder.direct(DEATH_TYPE));
+    private static final DamageType DEATH_TYPE = new DamageType("sharedlife_death", 0);
+    private static final DamageSource DEATH_SOURCE = new DamageSource(Holder.direct(DEATH_TYPE));
 
     private static final Logger LOG = LogUtils.getLogger();
 
@@ -29,7 +29,7 @@ public class SharedLife {
     private float saturation;
     private int thirst;
     private int quenched;
-    private int experience;
+    private int experienceLevel;
 
     private float previousHealth;
     private float previousAbsorption;
@@ -37,7 +37,7 @@ public class SharedLife {
     private float previousSaturation;
     private int previousThirst;
     private int previousQuenched;
-    private int previousExperience;
+    private int previousExperienceLevel;
 
     public SharedLife(PlayerSyncStatusChecker playerSyncStatusChecker, ThirstPlugin thirstPlugin) {
         this.playerSyncStatusChecker = playerSyncStatusChecker;
@@ -45,16 +45,28 @@ public class SharedLife {
     }
 
     /**
+     * Includes a new player into the shared life.
+     */
+    public void includeNewPlayer(ServerPlayer player) {
+        if (isExemptFromSharedLife(player)) return;
+        if (isDead()) {
+            initializeFrom(player);
+        }
+
+        syncToPlayer(player);
+    }
+
+    /**
      * Initializes the shared life with the state of the given player.
      */
-    public void initializeFrom(Player player) {
+    private void initializeFrom(ServerPlayer player) {
         this.health = player.getHealth();
         this.absorption = player.getAbsorptionAmount();
         this.food = player.getFoodData().getFoodLevel();
         this.saturation = player.getFoodData().getSaturationLevel();
         this.thirst = thirstPlugin.getThirst(player);
         this.quenched = thirstPlugin.getQuenched(player);
-        this.experience = player.totalExperience;
+        this.experienceLevel = player.experienceLevel;
 
         resetPreviousStats();
         LOG.debug("Initialized shared life from player {}: {}", player.getName().getString(), this);
@@ -67,7 +79,7 @@ public class SharedLife {
         this.previousSaturation = this.saturation;
         this.previousThirst = this.thirst;
         this.previousQuenched = this.quenched;
-        this.previousExperience = this.experience;
+        this.previousExperienceLevel = this.experienceLevel;
     }
 
     /**
@@ -75,6 +87,7 @@ public class SharedLife {
      */
     public void tick(PlayerList playerList) {
         LOG.trace("Tick: {}", this);
+
         for (var player : playerList.getPlayers()) {
             syncToPlayer(player);
         }
@@ -85,7 +98,7 @@ public class SharedLife {
     /**
      * Syncs the shared life state to the given player.
      */
-    public void syncToPlayer(Player player) {
+    public void syncToPlayer(ServerPlayer player) {
         if (isExemptFromSharedLife(player)) return;
 
         var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
@@ -104,13 +117,13 @@ public class SharedLife {
         if (playerSyncedStats.thirst()) thirstPlugin.setThirst(player, this.thirst);
         if (playerSyncedStats.quenched()) thirstPlugin.setQuenched(player, this.quenched);
 
-        if (playerSyncedStats.experience()) player.giveExperiencePoints(this.experience - player.totalExperience);
+        if (playerSyncedStats.experience()) player.giveExperienceLevels(this.experienceLevel - player.experienceLevel);
     }
 
     /**
      * Updates the shared life with the changes from the given player.
      */
-    public void applyChangesFrom(Player player) {
+    public void applyChangesFrom(ServerPlayer player) {
         if (isExemptFromSharedLife(player)) return;
 
         var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
@@ -122,7 +135,7 @@ public class SharedLife {
         var saturationChange = playerFoodData.getSaturationLevel() - previousSaturation;
         var thirstChange = thirstPlugin.getThirst(player) - previousThirst;
         var quenchedChange = thirstPlugin.getQuenched(player) - previousQuenched;
-        var experienceChange = player.totalExperience - previousExperience;
+        var experienceLevelChange = player.experienceLevel - previousExperienceLevel;
 
         if (playerSyncedStats.health()) this.health = Math.max(0, this.health + healthChange);
         if (playerSyncedStats.absorption()) this.absorption = Math.max(0, this.absorption + absorptionChange);
@@ -130,7 +143,7 @@ public class SharedLife {
         if (playerSyncedStats.saturation()) this.saturation = Math.max(0, this.saturation + saturationChange);
         if (playerSyncedStats.thirst()) this.thirst = Math.max(0, this.thirst + thirstChange);
         if (playerSyncedStats.quenched()) this.quenched = Math.max(0, this.quenched + quenchedChange);
-        if (playerSyncedStats.experience()) this.experience = Math.max(0, this.experience + experienceChange);
+        if (playerSyncedStats.experience()) this.experienceLevel = Math.max(0, this.experienceLevel + experienceLevelChange);
 
         LOG.trace("Applied changes from player {}: {}", player.getName().getString(), this);
     }
@@ -149,20 +162,27 @@ public class SharedLife {
         return health <= 0;
     }
 
+    @Override
+    public String toString() {
+        return "SharedLife(health=%s, absorption=%s, food=%s, saturation=%s, thirst=%s, quenched=%s, experienceLevel=%s)"
+                .formatted(health, absorption, food, saturation, thirst, quenched, experienceLevel);
+    }
+
+    /**
+     * Checks if the given damage source represents a shared life death.
+     */
+    public static boolean isSharedLifeDeath(DamageSource source) {
+        return source == DEATH_SOURCE;
+    }
+
     /**
      * Checks if the given player is currently exempt from shared life effects.
      */
-    private boolean isExemptFromSharedLife(Player player) {
+    public static boolean isExemptFromSharedLife(ServerPlayer player) {
         if (player.isDeadOrDying()) return true;
         if (player.isSpectator()) return true;
         if (player.isCreative()) return true;
 
         return false;
-    }
-
-    @Override
-    public String toString() {
-        return "SharedLife(health=%s, absorption=%s, food=%s, saturation=%s, thirst=%s, quenched=%s, experience=%s)"
-                .formatted(health, absorption, food, saturation, thirst, quenched, experience);
     }
 }

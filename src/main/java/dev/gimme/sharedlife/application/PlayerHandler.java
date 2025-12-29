@@ -5,9 +5,9 @@ import dev.gimme.sharedlife.domain.SharedLife;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -25,25 +25,25 @@ public class PlayerHandler {
         this.sharedLife = sharedLife;
     }
 
-    public void onPlayerTick(@NotNull Player player) {
+    public void onPlayerTick(@NotNull ServerPlayer player) {
         sharedLife.applyChangesFrom(player);
     }
 
-    public void onPlayerJoinLevel(@NotNull Player player) {
-        if (sharedLife.isDead()) {
-            sharedLife.initializeFrom(player);
-        }
-
-        sharedLife.syncToPlayer(player);
+    public void onPlayerJoinLevel(@NotNull ServerPlayer player) {
+        sharedLife.includeNewPlayer(player);
     }
 
-    public void onPlayerDamage(@NotNull Player player, float damage) {
+    public void onPlayerChangeGameMode(@NotNull ServerPlayer player) {
+        sharedLife.includeNewPlayer(player);
+    }
+
+    public void onPlayerDamage(@NotNull ServerPlayer player, float damage) {
         indicateDamageToOtherPlayers(player);
         broadcastDamageMessage(player, damage);
     }
 
-    public void onPlayerDeath(@NotNull Player entity, @Nullable DamageSource source) {
-        if (source == SharedLife.DEATH_SOURCE) return;
+    public void onPlayerDeath(@NotNull ServerPlayer entity, @Nullable DamageSource source) {
+        if (SharedLife.isSharedLifeDeath(source)) return;
 
         sharedLife.kill();
         LOG.info("{} has caused shared life death.", entity.getName().getString());
