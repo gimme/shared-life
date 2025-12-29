@@ -1,5 +1,7 @@
 package dev.gimme.sharedlife.domain;
 
+import dev.gimme.sharedlife.domain.config.PlayerSyncStatusChecker;
+import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.entity.player.Player;
 
@@ -8,7 +10,8 @@ import net.minecraft.world.entity.player.Player;
  */
 public class SharedLife {
 
-    private IThirstPlugin thirstPlugin;
+    private final PlayerSyncStatusChecker playerSyncStatusChecker;
+    private final ThirstPlugin thirstPlugin;
 
     private boolean initialized = false;
 
@@ -24,7 +27,8 @@ public class SharedLife {
     private int previousThirst;
     private int previousQuenched;
 
-    public SharedLife(IThirstPlugin thirstPlugin) {
+    public SharedLife(PlayerSyncStatusChecker playerSyncStatusChecker, ThirstPlugin thirstPlugin) {
+        this.playerSyncStatusChecker = playerSyncStatusChecker;
         this.thirstPlugin = thirstPlugin;
     }
 
@@ -66,13 +70,15 @@ public class SharedLife {
      * Syncs the shared life state to the given player.
      */
     public void syncToPlayer(Player player) {
-        player.setHealth(this.health);
         var playerFoodData = player.getFoodData();
-        playerFoodData.setFoodLevel(this.food);
-        playerFoodData.setSaturation(this.saturation);
+        var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
 
-        thirstPlugin.setThirst(player, this.thirst);
-        thirstPlugin.setQuenched(player, this.quenched);
+        if (playerSyncedStats.health()) player.setHealth(this.health);
+        if (playerSyncedStats.food()) playerFoodData.setFoodLevel(this.food);
+        if (playerSyncedStats.saturation()) playerFoodData.setSaturation(this.saturation);
+
+        if (playerSyncedStats.thirst()) thirstPlugin.setThirst(player, this.thirst);
+        if (playerSyncedStats.quenched()) thirstPlugin.setQuenched(player, this.quenched);
     }
 
     /**

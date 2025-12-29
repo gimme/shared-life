@@ -1,6 +1,6 @@
 package dev.gimme.sharedlife.forge.plugins;
 
-import dev.gimme.sharedlife.domain.IThirstPlugin;
+import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fml.ModList;
@@ -10,7 +10,10 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Method;
 import java.util.function.Function;
 
-public class ThirstPlugin implements IThirstPlugin {
+/**
+ * Thirst plugin implementation for Forge using reflection to access the "Thirst Was Taken" mod.
+ */
+public class ForgeThirstPlugin implements ThirstPlugin {
 
     private Function<@NotNull Player, @Nullable Object> getThirstCapabilityFunction = (player) -> null;
     private Method getThirstMethod = null;
@@ -18,7 +21,7 @@ public class ThirstPlugin implements IThirstPlugin {
     private Method getQuenchedMethod = null;
     private Method setQuenchedMethod = null;
 
-    public ThirstPlugin() {
+    public ForgeThirstPlugin() {
         if (!ModList.get().isLoaded("thirst")) return;
 
         try {

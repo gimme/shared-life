@@ -1,9 +1,12 @@
-package dev.gimme.sharedlife.domain;
+package dev.gimme.sharedlife.domain.plugins;
 
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 
-public interface IThirstPlugin {
+/**
+ * Plugin interface for accessing stats introduced by thirst mods.
+ */
+public interface ThirstPlugin {
 
     int getThirst(@NotNull Player player);
 
