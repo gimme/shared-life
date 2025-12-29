@@ -24,6 +24,8 @@ public class PlayerSyncStatusChecker {
     }
 
     private boolean checkGameRule(Player player, GameRules.Key<GameRules.BooleanValue> rule) {
-        return player.level().getGameRules().getBoolean(rule);
+        var gameRule = player.level().getGameRules().getRule(rule);
+        if (gameRule == null) return false;
+        return gameRule.get();
     }
 }
