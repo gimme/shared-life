@@ -6,6 +6,7 @@ import dev.gimme.sharedlife.application.ServerHandler;
 import dev.gimme.sharedlife.domain.SharedLife;
 import dev.gimme.sharedlife.forge.listeners.PlayerListener;
 import dev.gimme.sharedlife.forge.listeners.ServerListener;
+import dev.gimme.sharedlife.forge.plugins.ThirstPlugin;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
@@ -51,7 +52,7 @@ public class ForgeMod {
 
     @SubscribeEvent
     public void onServerStarting(ServerAboutToStartEvent event) {
-        var sharedLife = new SharedLife();
+        var sharedLife = new SharedLife(new ThirstPlugin());
 
         MinecraftForge.EVENT_BUS.register(new ServerListener(new ServerHandler(sharedLife)));
         MinecraftForge.EVENT_BUS.register(new PlayerListener(new PlayerHandler(sharedLife)));
