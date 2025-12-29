@@ -16,4 +16,6 @@ class ModGameRules {
             GameRules.register("syncThirst", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
     static final GameRules.Key<GameRules.BooleanValue> SYNC_QUENCHED =
             GameRules.register("syncQuenched", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
+    static final GameRules.Key<GameRules.BooleanValue> SYNC_EXPERIENCE =
+            GameRules.register("syncExperience", GameRules.Category.PLAYER, GameRules.BooleanValue.create(false));
 }

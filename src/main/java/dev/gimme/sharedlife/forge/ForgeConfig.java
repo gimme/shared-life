@@ -30,6 +30,10 @@ public class ForgeConfig implements Config {
             .comment("[Thirst Was Taken] If quenched should be synced between players")
             .define("syncQuenched", true);
 
+    private static final ForgeConfigSpec.BooleanValue SYNC_EXPERIENCE = BUILDER
+            .comment("If experience should be synced between players")
+            .define("syncExperience", false);
+
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
     @Override
@@ -60,5 +64,10 @@ public class ForgeConfig implements Config {
     @Override
     public boolean syncQuenched() {
         return SYNC_QUENCHED.get();
+    }
+
+    @Override
+    public boolean syncExperience() {
+        return SYNC_EXPERIENCE.get();
     }
 }

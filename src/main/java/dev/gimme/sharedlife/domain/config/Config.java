@@ -8,4 +8,5 @@ public interface Config {
     boolean syncSaturation();
     boolean syncThirst();
     boolean syncQuenched();
+    boolean syncExperience();
 }

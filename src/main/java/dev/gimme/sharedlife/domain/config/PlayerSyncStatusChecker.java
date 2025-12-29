@@ -18,7 +18,8 @@ public class PlayerSyncStatusChecker {
                 config.syncFood() || checkGameRule(player, ModGameRules.SYNC_FOOD),
                 config.syncSaturation() || checkGameRule(player, ModGameRules.SYNC_SATURATION),
                 config.syncThirst() || checkGameRule(player, ModGameRules.SYNC_THIRST),
-                config.syncQuenched() || checkGameRule(player, ModGameRules.SYNC_QUENCHED)
+                config.syncQuenched() || checkGameRule(player, ModGameRules.SYNC_QUENCHED),
+                config.syncExperience() || checkGameRule(player, ModGameRules.SYNC_EXPERIENCE)
         );
     }
 

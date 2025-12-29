@@ -9,6 +9,7 @@ public record PlayerSyncedStats(
         boolean food,
         boolean saturation,
         boolean thirst,
-        boolean quenched
+        boolean quenched,
+        boolean experience
 ) {
 }

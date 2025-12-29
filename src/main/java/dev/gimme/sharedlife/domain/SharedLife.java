@@ -21,6 +21,7 @@ public class SharedLife {
     private float saturation;
     private int thirst;
     private int quenched;
+    private int experience;
 
     private float previousHealth;
     private float previousAbsorption;
@@ -28,6 +29,7 @@ public class SharedLife {
     private float previousSaturation;
     private int previousThirst;
     private int previousQuenched;
+    private int previousExperience;
 
     public SharedLife(PlayerSyncStatusChecker playerSyncStatusChecker, ThirstPlugin thirstPlugin) {
         this.playerSyncStatusChecker = playerSyncStatusChecker;
@@ -45,6 +47,7 @@ public class SharedLife {
         this.saturation = player.getFoodData().getSaturationLevel();
         this.thirst = thirstPlugin.getThirst(player);
         this.quenched = thirstPlugin.getQuenched(player);
+        this.experience = player.totalExperience;
 
         resetPreviousStats();
     }
@@ -56,6 +59,7 @@ public class SharedLife {
         this.previousSaturation = this.saturation;
         this.previousThirst = this.thirst;
         this.previousQuenched = this.quenched;
+        this.previousExperience = this.experience;
     }
 
     /**
@@ -84,6 +88,8 @@ public class SharedLife {
 
         if (playerSyncedStats.thirst()) thirstPlugin.setThirst(player, this.thirst);
         if (playerSyncedStats.quenched()) thirstPlugin.setQuenched(player, this.quenched);
+
+        if (playerSyncedStats.experience()) player.giveExperiencePoints(this.experience - player.totalExperience);
     }
 
     /**
@@ -98,6 +104,7 @@ public class SharedLife {
         var saturationChange = playerFoodData.getSaturationLevel() - previousSaturation;
         var thirstChange = thirstPlugin.getThirst(player) - previousThirst;
         var quenchedChange = thirstPlugin.getQuenched(player) - previousQuenched;
+        var experienceChange = player.totalExperience - previousExperience;
 
         this.health = Math.max(0, this.health + healthChange);
         this.absorption = Math.max(0, this.absorption + absorptionChange);
@@ -105,6 +112,7 @@ public class SharedLife {
         this.saturation = Math.max(0, this.saturation + saturationChange);
         this.thirst = Math.max(0, this.thirst + thirstChange);
         this.quenched = Math.max(0, this.quenched + quenchedChange);
+        this.experience = Math.max(0, this.experience + experienceChange);
     }
 
     /**
