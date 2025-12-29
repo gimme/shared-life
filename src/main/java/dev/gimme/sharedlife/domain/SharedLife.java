@@ -3,20 +3,14 @@ package dev.gimme.sharedlife.domain;
 import com.mojang.logging.LogUtils;
 import dev.gimme.sharedlife.domain.config.PlayerSyncStatusChecker;
 import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
-import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
-import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.damagesource.DamageType;
 import org.slf4j.Logger;
 
 /**
  * Represents a shared life among all players.
  */
 public class SharedLife {
-
-    private static final DamageType DEATH_TYPE = new DamageType("sharedlife_death", 0);
-    private static final DamageSource DEATH_SOURCE = new DamageSource(Holder.direct(DEATH_TYPE));
 
     private static final Logger LOG = LogUtils.getLogger();
 
@@ -49,6 +43,7 @@ public class SharedLife {
      */
     public void includeNewPlayer(ServerPlayer player) {
         if (isExemptFromSharedLife(player)) return;
+
         if (isDead()) {
             initializeFrom(player);
         }
@@ -107,7 +102,8 @@ public class SharedLife {
         if (playerSyncedStats.health()) {
             player.setHealth(this.health);
             if (isDead()) {
-                player.die(DEATH_SOURCE);
+                var genericDamageSource = player.level().damageSources().generic();
+                player.die(genericDamageSource);
             }
         }
         if (playerSyncedStats.absorption()) player.setAbsorptionAmount(this.absorption);
@@ -149,10 +145,14 @@ public class SharedLife {
     }
 
     /**
-     * Kills the shared life.
+     * Ends the shared life due to the given player's death.
      */
-    public void kill() {
-        this.health = 0;
+    public void endIt(ServerPlayer player) {
+        if (isDead()) return;
+        if (playerSyncStatusChecker.getPlayerSyncedStats(player).health()) {
+            this.health = 0;
+            LOG.info("{} has caused shared life death.", player.getName().getString());
+        }
     }
 
     /**
@@ -169,16 +169,9 @@ public class SharedLife {
     }
 
     /**
-     * Checks if the given damage source represents a shared life death.
-     */
-    public static boolean isSharedLifeDeath(DamageSource source) {
-        return source == DEATH_SOURCE;
-    }
-
-    /**
      * Checks if the given player is currently exempt from shared life effects.
      */
-    public static boolean isExemptFromSharedLife(ServerPlayer player) {
+    private static boolean isExemptFromSharedLife(ServerPlayer player) {
         if (player.isDeadOrDying()) return true;
         if (player.isSpectator()) return true;
         if (player.isCreative()) return true;

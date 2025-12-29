@@ -45,6 +45,6 @@ public class PlayerListener {
     @SubscribeEvent
     public void onDeath(LivingDeathEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerDeath(player, event.getSource());
+        playerHandler.onPlayerDeath(player);
     }
 }

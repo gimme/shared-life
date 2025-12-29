@@ -1,22 +1,17 @@
 package dev.gimme.sharedlife.application;
 
-import com.mojang.logging.LogUtils;
 import dev.gimme.sharedlife.domain.SharedLife;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 
 import java.text.DecimalFormat;
 
 public class PlayerHandler {
 
-    private static final Logger LOG = LogUtils.getLogger();
     private static final DecimalFormat HEARTS_DECIMAL_FORMAT = new DecimalFormat("0.0");
 
     private final SharedLife sharedLife;
@@ -42,11 +37,8 @@ public class PlayerHandler {
         broadcastDamageMessage(player, damage);
     }
 
-    public void onPlayerDeath(@NotNull ServerPlayer entity, @Nullable DamageSource source) {
-        if (SharedLife.isSharedLifeDeath(source)) return;
-
-        sharedLife.kill();
-        LOG.info("{} has caused shared life death.", entity.getName().getString());
+    public void onPlayerDeath(@NotNull ServerPlayer player) {
+        sharedLife.endIt(player);
     }
 
     /**
