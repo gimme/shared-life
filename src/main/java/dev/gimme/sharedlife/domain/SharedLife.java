@@ -86,7 +86,7 @@ public class SharedLife {
      * Syncs the shared life state to the given player.
      */
     public void syncToPlayer(Player player) {
-        if (player.isDeadOrDying()) return;
+        if (isExemptFromSharedLife(player)) return;
 
         var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
         var playerFoodData = player.getFoodData();
@@ -111,7 +111,7 @@ public class SharedLife {
      * Updates the shared life with the changes from the given player.
      */
     public void applyChangesFrom(Player player) {
-        if (player.isDeadOrDying()) return;
+        if (isExemptFromSharedLife(player)) return;
 
         var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
         var playerFoodData = player.getFoodData();
@@ -147,6 +147,17 @@ public class SharedLife {
      */
     public boolean isDead() {
         return health <= 0;
+    }
+
+    /**
+     * Checks if the given player is currently exempt from shared life effects.
+     */
+    private boolean isExemptFromSharedLife(Player player) {
+        if (player.isDeadOrDying()) return true;
+        if (player.isSpectator()) return true;
+        if (player.isCreative()) return true;
+
+        return false;
     }
 
     @Override
