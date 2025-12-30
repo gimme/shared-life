@@ -18,7 +18,6 @@ public class SharedLife {
     private final ThirstPlugin thirstPlugin;
 
     private float health;
-    private float absorption;
     private int food;
     private float saturation;
     private int thirst;
@@ -26,7 +25,6 @@ public class SharedLife {
     private int experienceLevel;
 
     private float previousHealth;
-    private float previousAbsorption;
     private int previousFood;
     private float previousSaturation;
     private int previousThirst;
@@ -56,7 +54,6 @@ public class SharedLife {
      */
     private void initializeFrom(ServerPlayer player) {
         this.health = player.getHealth();
-        this.absorption = player.getAbsorptionAmount();
         this.food = player.getFoodData().getFoodLevel();
         this.saturation = player.getFoodData().getSaturationLevel();
         this.thirst = thirstPlugin.getThirst(player);
@@ -69,7 +66,6 @@ public class SharedLife {
 
     private void resetPreviousStats() {
         this.previousHealth = this.health;
-        this.previousAbsorption = this.absorption;
         this.previousFood = this.food;
         this.previousSaturation = this.saturation;
         this.previousThirst = this.thirst;
@@ -106,7 +102,6 @@ public class SharedLife {
                 player.die(genericDamageSource);
             }
         }
-        if (playerSyncedStats.absorption()) player.setAbsorptionAmount(this.absorption);
         if (playerSyncedStats.food()) playerFoodData.setFoodLevel(this.food);
         if (playerSyncedStats.saturation()) playerFoodData.setSaturation(this.saturation);
 
@@ -126,7 +121,6 @@ public class SharedLife {
         var playerFoodData = player.getFoodData();
 
         var healthChange = player.getHealth() - previousHealth;
-        var absorptionChange = player.getAbsorptionAmount() - previousAbsorption;
         var foodChange = playerFoodData.getFoodLevel() - previousFood;
         var saturationChange = playerFoodData.getSaturationLevel() - previousSaturation;
         var thirstChange = thirstPlugin.getThirst(player) - previousThirst;
@@ -134,7 +128,6 @@ public class SharedLife {
         var experienceLevelChange = player.experienceLevel - previousExperienceLevel;
 
         if (playerSyncedStats.health()) this.health = Math.max(0, this.health + healthChange);
-        if (playerSyncedStats.absorption()) this.absorption = Math.max(0, this.absorption + absorptionChange);
         if (playerSyncedStats.food()) this.food = Math.max(0, this.food + foodChange);
         if (playerSyncedStats.saturation()) this.saturation = Math.max(0, this.saturation + saturationChange);
         if (playerSyncedStats.thirst()) this.thirst = Math.max(0, this.thirst + thirstChange);
@@ -164,8 +157,8 @@ public class SharedLife {
 
     @Override
     public String toString() {
-        return "SharedLife(health=%s, absorption=%s, food=%s, saturation=%s, thirst=%s, quenched=%s, experienceLevel=%s)"
-                .formatted(health, absorption, food, saturation, thirst, quenched, experienceLevel);
+        return "SharedLife(health=%s, food=%s, saturation=%s, thirst=%s, quenched=%s, experienceLevel=%s)"
+                .formatted(health, food, saturation, thirst, quenched, experienceLevel);
     }
 
     /**
