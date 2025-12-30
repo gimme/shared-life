@@ -36,6 +36,8 @@ public class PlayerHandler {
     }
 
     public void onPlayerDamage(@NotNull ServerPlayer player, float damage, float absorbedDamage) {
+        if (!playerConfig.getEnabledSyncStats(player).health()) return;
+
         indicateDamageToOtherPlayers(player);
         broadcastDamageMessage(player, damage, absorbedDamage);
     }
