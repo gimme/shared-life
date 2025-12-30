@@ -14,7 +14,6 @@ public class PlayerSyncStatusChecker {
     public PlayerSyncedStats getPlayerSyncedStats(Player player) {
         return new PlayerSyncedStats(
                 config.syncHealth() || checkGameRule(player, ModGameRules.SYNC_HEALTH),
-                config.syncAbsorption() || checkGameRule(player, ModGameRules.SYNC_ABSORPTION),
                 config.syncFood() || checkGameRule(player, ModGameRules.SYNC_FOOD),
                 config.syncSaturation() || checkGameRule(player, ModGameRules.SYNC_SATURATION),
                 config.syncThirst() || checkGameRule(player, ModGameRules.SYNC_THIRST),
