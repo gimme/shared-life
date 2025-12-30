@@ -2,7 +2,7 @@ package dev.gimme.sharedlife.forge;
 
 import dev.gimme.sharedlife.application.PlayerHandler;
 import dev.gimme.sharedlife.application.ServerHandler;
-import dev.gimme.sharedlife.domain.config.PlayerSyncStatusChecker;
+import dev.gimme.sharedlife.domain.config.PlayerConfig;
 import dev.gimme.sharedlife.domain.SharedLife;
 import dev.gimme.sharedlife.forge.listeners.PlayerListener;
 import dev.gimme.sharedlife.forge.listeners.ServerListener;
@@ -26,10 +26,10 @@ public class ForgeMod {
 
     @SubscribeEvent
     public void onServerStarting(ServerAboutToStartEvent event) {
-        var config = new ForgeConfig();
-        var sharedLife = new SharedLife(new PlayerSyncStatusChecker(config), new ForgeThirstPlugin());
+        var playerConfig = new PlayerConfig(new ForgeConfig());
+        var sharedLife = new SharedLife(playerConfig, new ForgeThirstPlugin());
 
         MinecraftForge.EVENT_BUS.register(new ServerListener(new ServerHandler(sharedLife)));
-        MinecraftForge.EVENT_BUS.register(new PlayerListener(new PlayerHandler(sharedLife)));
+        MinecraftForge.EVENT_BUS.register(new PlayerListener(new PlayerHandler(sharedLife, playerConfig)));
     }
 }

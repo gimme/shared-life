@@ -1,7 +1,7 @@
 package dev.gimme.sharedlife.domain;
 
 import com.mojang.logging.LogUtils;
-import dev.gimme.sharedlife.domain.config.PlayerSyncStatusChecker;
+import dev.gimme.sharedlife.domain.config.PlayerConfig;
 import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
@@ -14,7 +14,7 @@ public class SharedLife {
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    private final PlayerSyncStatusChecker playerSyncStatusChecker;
+    private final PlayerConfig playerConfig;
     private final ThirstPlugin thirstPlugin;
 
     private float health;
@@ -31,8 +31,8 @@ public class SharedLife {
     private int previousQuenched;
     private int previousExperienceLevel;
 
-    public SharedLife(PlayerSyncStatusChecker playerSyncStatusChecker, ThirstPlugin thirstPlugin) {
-        this.playerSyncStatusChecker = playerSyncStatusChecker;
+    public SharedLife(PlayerConfig playerConfig, ThirstPlugin thirstPlugin) {
+        this.playerConfig = playerConfig;
         this.thirstPlugin = thirstPlugin;
     }
 
@@ -92,23 +92,23 @@ public class SharedLife {
     public void syncToPlayer(ServerPlayer player) {
         if (isExemptFromSharedLife(player)) return;
 
-        var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
+        var enabledStats = playerConfig.getEnabledSyncStats(player);
         var playerFoodData = player.getFoodData();
 
-        if (playerSyncedStats.health()) {
+        if (enabledStats.health()) {
             player.setHealth(this.health);
             if (isDead()) {
                 var genericDamageSource = player.level().damageSources().generic();
                 player.die(genericDamageSource);
             }
         }
-        if (playerSyncedStats.food()) playerFoodData.setFoodLevel(this.food);
-        if (playerSyncedStats.saturation()) playerFoodData.setSaturation(this.saturation);
+        if (enabledStats.food()) playerFoodData.setFoodLevel(this.food);
+        if (enabledStats.saturation()) playerFoodData.setSaturation(this.saturation);
 
-        if (playerSyncedStats.thirst()) thirstPlugin.setThirst(player, this.thirst);
-        if (playerSyncedStats.quenched()) thirstPlugin.setQuenched(player, this.quenched);
+        if (enabledStats.thirst()) thirstPlugin.setThirst(player, this.thirst);
+        if (enabledStats.quenched()) thirstPlugin.setQuenched(player, this.quenched);
 
-        if (playerSyncedStats.experience()) player.giveExperienceLevels(this.experienceLevel - player.experienceLevel);
+        if (enabledStats.experience()) player.giveExperienceLevels(this.experienceLevel - player.experienceLevel);
     }
 
     /**
@@ -117,7 +117,7 @@ public class SharedLife {
     public void applyChangesFrom(ServerPlayer player) {
         if (isExemptFromSharedLife(player)) return;
 
-        var playerSyncedStats = playerSyncStatusChecker.getPlayerSyncedStats(player);
+        var playerSyncedStats = playerConfig.getEnabledSyncStats(player);
         var playerFoodData = player.getFoodData();
 
         var healthChange = player.getHealth() - previousHealth;
@@ -142,7 +142,7 @@ public class SharedLife {
      */
     public void endIt(ServerPlayer player) {
         if (isDead()) return;
-        if (playerSyncStatusChecker.getPlayerSyncedStats(player).health()) {
+        if (playerConfig.getEnabledSyncStats(player).health()) {
             this.health = 0;
             LOG.info("{} has caused shared life death.", player.getName().getString());
         }
