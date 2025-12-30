@@ -1,6 +1,7 @@
 package dev.gimme.sharedlife.application;
 
 import dev.gimme.sharedlife.domain.SharedLife;
+import dev.gimme.sharedlife.domain.config.PlayerConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -15,9 +16,11 @@ public class PlayerHandler {
     private static final DecimalFormat HEARTS_DECIMAL_FORMAT = new DecimalFormat("0.0");
 
     private final SharedLife sharedLife;
+    private final PlayerConfig playerConfig;
 
-    public PlayerHandler(SharedLife sharedLife) {
+    public PlayerHandler(SharedLife sharedLife, PlayerConfig playerConfig) {
         this.sharedLife = sharedLife;
+        this.playerConfig = playerConfig;
     }
 
     public void onPlayerTick(@NotNull ServerPlayer player) {

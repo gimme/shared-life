@@ -3,16 +3,22 @@ package dev.gimme.sharedlife.domain.config;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameRules;
 
-public class PlayerSyncStatusChecker {
+/**
+ * Handles player-specific configuration.
+ */
+public class PlayerConfig {
 
     private final Config config;
 
-    public PlayerSyncStatusChecker(Config config) {
+    public PlayerConfig(Config config) {
         this.config = config;
     }
 
-    public PlayerSyncedStats getPlayerSyncedStats(Player player) {
-        return new PlayerSyncedStats(
+    /**
+     * Returns which stats are currently enabled for syncing for the given player.
+     */
+    public PlayerEnabledSyncStats getEnabledSyncStats(Player player) {
+        return new PlayerEnabledSyncStats(
                 config.syncHealth() || checkGameRule(player, ModGameRules.SYNC_HEALTH),
                 config.syncFood() || checkGameRule(player, ModGameRules.SYNC_FOOD),
                 config.syncSaturation() || checkGameRule(player, ModGameRules.SYNC_SATURATION),
@@ -22,6 +28,9 @@ public class PlayerSyncStatusChecker {
         );
     }
 
+    /**
+     * Checks if a game rule is enabled for the player's current level.
+     */
     private boolean checkGameRule(Player player, GameRules.Key<GameRules.BooleanValue> rule) {
         var gameRule = player.level().getGameRules().getRule(rule);
         if (gameRule == null) return false;

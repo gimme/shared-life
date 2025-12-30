@@ -1,9 +1,9 @@
 package dev.gimme.sharedlife.domain.config;
 
 /**
- * Player stats that are synced.
+ * Represents which stats are synced for a player.
  */
-public record PlayerSyncedStats(
+public record PlayerEnabledSyncStats(
         boolean health,
         boolean food,
         boolean saturation,
