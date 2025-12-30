@@ -3,6 +3,7 @@ package dev.gimme.sharedlife.neoforge.listeners;
 import dev.gimme.sharedlife.application.PlayerHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.common.damagesource.DamageContainer;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
@@ -38,7 +39,9 @@ public class PlayerListener {
     @SubscribeEvent
     public void onDamage(LivingDamageEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerDamage(player, event.getNewDamage());
+        var normalDamage = event.getNewDamage();
+        var absorbedDamage = event.getReduction(DamageContainer.Reduction.ABSORPTION);
+        playerHandler.onPlayerDamage(player, normalDamage, absorbedDamage);
     }
 
     @SubscribeEvent
