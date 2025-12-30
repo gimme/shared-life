@@ -39,7 +39,7 @@ public class PlayerListener {
     @SubscribeEvent
     public void onDamage(LivingDamageEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerDamage(player, event.getAmount());
+        playerHandler.onPlayerDamage(player, event.getAmount(), 0);
     }
 
     @SubscribeEvent
