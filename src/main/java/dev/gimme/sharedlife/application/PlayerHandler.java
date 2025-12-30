@@ -24,7 +24,8 @@ public class PlayerHandler {
     }
 
     public void onPlayerTick(@NotNull ServerPlayer player) {
-        sharedLife.applyChangesFrom(player);
+        // TODO
+//        sharedLife.applyChangesFrom(player);
     }
 
     public void onPlayerJoinLevel(@NotNull ServerPlayer player) {
