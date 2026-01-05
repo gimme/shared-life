@@ -10,9 +10,12 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket;
 import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.food.FoodData;
@@ -26,7 +29,6 @@ import java.util.stream.Stream;
 
 public class SharedLife {
 
-    public static final String NAME = "Shared Life";
     private static final DecimalFormat HEARTS_DECIMAL_FORMAT = new DecimalFormat("0.0");
 
     private static final Logger LOG = LogUtils.getLogger();
@@ -153,6 +155,7 @@ public class SharedLife {
 
     public void tick() {
         tickHunger();
+        syncHealth();
         syncExperience();
     }
 
@@ -187,6 +190,26 @@ public class SharedLife {
         resetPreviousStats();
     }
 
+    private void syncHealth() {
+        getLiveSharedHealthPlayers().forEach(player -> {
+            var healthChange = getHealth() - player.getHealth();
+            if (healthChange == 0) return;
+
+            if (getHealth() <= 0) {
+                killPlayer(player);
+                return;
+            }
+
+            player.setHealth(getHealth());
+            player.connection.send(new ClientboundSetHealthPacket(player.getHealth(), player.getFoodData().getFoodLevel(), player.getFoodData().getSaturationLevel()));
+
+            if (healthChange < 0) {
+                player.connection.send(new ClientboundHurtAnimationPacket(player));
+                player.playNotifySound(SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 0.5f, 0.8f);
+            }
+        });
+    }
+
     private void syncExperience() {
         var expPlayers = getLiveSharedExperiencePlayers().toList();
 
@@ -207,16 +230,10 @@ public class SharedLife {
         if (source.is(ModDamageTypes.SHARED_LIFE)) return;
         if (hurtPlayer != null && !Players.isSharedHealthEnabled(hurtPlayer)) return;
 
-        setHealth(Math.max(0, getHealth() - amount));
+        setHealth(getHealth() - amount);
 
         geSharedHealthPlayers().forEach(player -> {
             sendDamageMessage(player, hurtPlayer, source, amount);
-
-            if (player != hurtPlayer) {
-                // TODO: Fix bug: the below player dies first in the message order
-                // TODO: Check if this is problematic with invulnerability frames
-                player.hurt(damageSource, amount);
-            }
         });
     }
 
@@ -226,30 +243,17 @@ public class SharedLife {
         if (healedPlayer != null && !Players.isSharedHealthEnabled(healedPlayer)) return;
 
         setHealth(getHealth() + healAmount);
-
-        getLiveSharedHealthPlayers().forEach(player -> {
-            if (player != healedPlayer) {
-                player.setHealth(getHealth());
-                player.connection.send(new ClientboundSetHealthPacket(player.getHealth(), player.getFoodData().getFoodLevel(), player.getFoodData().getSaturationLevel()));
-            }
-        });
     }
 
     /**
      * Ends the shared life due to the given player's death.
      */
-    public void killBy(@Nullable ServerPlayer deadPlayer) {
+    public void killBy(@NotNull ServerPlayer deadPlayer) {
         if (isDead()) return;
-        if (deadPlayer != null && !Players.isSharedHealthEnabled(deadPlayer)) return;
+        if (!Players.isSharedHealthEnabled(deadPlayer)) return;
 
         setHealth(0);
-        LOG.debug("{} has caused shared life death.", deadPlayer != null ? deadPlayer.getName().getString() : "Unknown");
-
-        getLiveSharedHealthPlayers().forEach(player -> {
-            if (player != deadPlayer) {
-                killPlayer(player);
-            }
-        });
+        LOG.debug("{} has caused shared life death.", deadPlayer.getName().getString());
     }
 
     private void killPlayer(@NotNull ServerPlayer player) {
@@ -260,7 +264,7 @@ public class SharedLife {
      * Sends a message to show who took damage.
      */
     private void sendDamageMessage(@NotNull ServerPlayer toPlayer, @Nullable Entity sourceEntity, @NotNull DamageSource source, float damage) {
-        var name = sourceEntity != null ? sourceEntity.getName().getString() : NAME;
+        var name = sourceEntity != null ? sourceEntity.getName().getString() : Constants.MOD_NAME;
         var formattedHearts = HEARTS_DECIMAL_FORMAT.format(damage / 2) + " ❤";
         var damageSourceEntity = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
         var damageSourceName = damageSourceEntity != null ? damageSourceEntity.getName().getString() : source.getMsgId();
