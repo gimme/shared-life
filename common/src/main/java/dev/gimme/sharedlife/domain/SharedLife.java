@@ -62,6 +62,7 @@ public class SharedLife {
     public class Heart extends FakePlayer {
         public Heart(@NotNull MinecraftServer server) {
             super(server.overworld(), new GameProfile(UUID.randomUUID(), Constants.MOD_NAME));
+            setHealth(0);
         }
 
         @Override
