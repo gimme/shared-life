@@ -1,5 +1,6 @@
 package dev.gimme.sharedlife.mixin;
 
+import dev.gimme.sharedlife.domain.SharedLife;
 import dev.gimme.sharedlife.domain.util.Players;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -21,7 +22,7 @@ public abstract class MixinFoodData {
 
     @Inject(method = "tick", at = @At(value = "HEAD"), cancellable = true, require = 1)
     private void tick(Player player, CallbackInfo ci) {
-        if (player instanceof ServerPlayer serverPlayer && Players.isSharedHungerEnabled(serverPlayer)) {
+        if (!(player instanceof SharedLife.Heart) && player instanceof ServerPlayer serverPlayer && Players.isSharedHungerEnabled(serverPlayer)) {
             this.lastFoodLevel = this.foodLevel;
             ci.cancel();
         }

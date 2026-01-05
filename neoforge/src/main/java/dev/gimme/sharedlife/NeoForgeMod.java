@@ -25,7 +25,7 @@ public class NeoForgeMod {
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
-        var sharedLife = new SharedLife(event.getServer().overworld());
+        var sharedLife = new SharedLife(event.getServer());
 
         NeoForge.EVENT_BUS.register(new ServerListener(new ServerHandler(sharedLife)));
         NeoForge.EVENT_BUS.register(new PlayerListener(new PlayerHandler(sharedLife)));

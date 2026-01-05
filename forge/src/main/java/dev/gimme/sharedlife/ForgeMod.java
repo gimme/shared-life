@@ -26,7 +26,7 @@ public class ForgeMod {
 
     @SubscribeEvent
     public void onServerStarting(ServerAboutToStartEvent event) {
-        var sharedLife = new SharedLife(event.getServer().overworld(), new ForgeThirstPlugin());
+        var sharedLife = new SharedLife(event.getServer(), new ForgeThirstPlugin());
 
         MinecraftForge.EVENT_BUS.register(new ServerListener(new ServerHandler(sharedLife)));
         MinecraftForge.EVENT_BUS.register(new PlayerListener(new PlayerHandler(sharedLife)));

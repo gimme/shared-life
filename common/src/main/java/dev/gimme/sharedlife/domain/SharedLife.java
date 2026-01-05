@@ -3,6 +3,7 @@ package dev.gimme.sharedlife.domain;
 import com.mojang.authlib.GameProfile;
 import com.mojang.logging.LogUtils;
 import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
+import dev.gimme.sharedlife.domain.util.Constants;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
 import dev.gimme.sharedlife.domain.util.Players;
 import net.minecraft.ChatFormatting;
@@ -10,10 +11,11 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.food.FoodData;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -22,15 +24,20 @@ import java.text.DecimalFormat;
 import java.util.UUID;
 import java.util.stream.Stream;
 
-public class SharedLife extends FakePlayer {
+public class SharedLife {
 
     public static final String NAME = "Shared Life";
     private static final DecimalFormat HEARTS_DECIMAL_FORMAT = new DecimalFormat("0.0");
 
     private static final Logger LOG = LogUtils.getLogger();
 
-    private final DamageSource damageSource = new DamageSource(registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(ModDamageTypes.SHARED_LIFE));
+    private final MinecraftServer server;
+    private final DamageSource damageSource;
+    private final Heart heart;
     private final @Nullable ThirstPlugin thirstPlugin;
+
+    private final FoodData foodData = new FoodData();
+    private int experienceLevel;
 
     private int previousFoodLevel;
     private float previousSaturation;
@@ -38,13 +45,32 @@ public class SharedLife extends FakePlayer {
     private int previousQuenched;
     private int previousExperienceLevel;
 
-    public SharedLife(@NotNull ServerLevel level) {
-        this(level, null);
+    public SharedLife(@NotNull MinecraftServer server) {
+        this(server, null);
     }
 
-    public SharedLife(@NotNull ServerLevel level, @Nullable ThirstPlugin thirstPlugin) {
-        super(level, new GameProfile(UUID.randomUUID(), NAME));
+    public SharedLife(@NotNull MinecraftServer server, @Nullable ThirstPlugin thirstPlugin) {
+        this.server = server;
+        this.damageSource = new DamageSource(server.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(ModDamageTypes.SHARED_LIFE));
+        this.heart = new Heart(server);
         this.thirstPlugin = thirstPlugin;
+    }
+
+    public class Heart extends FakePlayer {
+        public Heart(@NotNull MinecraftServer server) {
+            super(server.overworld(), new GameProfile(UUID.randomUUID(), Constants.MOD_NAME));
+        }
+
+        @Override
+        public boolean hurt(@NotNull DamageSource source, float amount) {
+            hurtByPlayer(null, source, amount);
+            return true;
+        }
+
+        @Override
+        public void heal(float healAmount) {
+            healByPlayer(null, healAmount);
+        }
     }
 
     /**
@@ -54,7 +80,7 @@ public class SharedLife extends FakePlayer {
         if (player.isDeadOrDying()) return;
         if (Players.isEthereal(player)) return;
 
-        if (isDeadOrDying()) {
+        if (isDead()) {
             initializeFrom(player);
         } else {
             initializeTo(player);
@@ -70,7 +96,7 @@ public class SharedLife extends FakePlayer {
         if (Players.isSharedHealthEnabled(player)) {
             player.setHealth(getHealth());
 
-            if (isDeadOrDying()) {
+            if (isDead()) {
                 killPlayer(player);
             }
         }
@@ -80,17 +106,17 @@ public class SharedLife extends FakePlayer {
         }
 
         if (Players.isSharedExperienceEnabled(player)) {
-            player.setExperienceLevels(this.experienceLevel);
+            player.setExperienceLevels(experienceLevel);
         }
     }
 
     private void applyHunger(ServerPlayer player) {
-        player.getFoodData().setFoodLevel(this.foodData.getFoodLevel());
-        player.getFoodData().setSaturation(this.foodData.getSaturationLevel());
+        player.getFoodData().setFoodLevel(foodData.getFoodLevel());
+        player.getFoodData().setSaturation(foodData.getSaturationLevel());
 
         if (thirstPlugin != null) {
-            thirstPlugin.setThirst(player, thirstPlugin.getThirst(this));
-            thirstPlugin.setQuenched(player, thirstPlugin.getQuenched(this));
+            thirstPlugin.setThirst(player, thirstPlugin.getThirst(heart));
+            thirstPlugin.setQuenched(player, thirstPlugin.getQuenched(heart));
         }
     }
 
@@ -101,14 +127,14 @@ public class SharedLife extends FakePlayer {
         setHealth(player.getHealth());
         setExperienceLevels(player.experienceLevel);
 
-        this.foodData.setFoodLevel(player.getFoodData().getFoodLevel());
-        this.foodData.setSaturation(player.getFoodData().getSaturationLevel());
-        this.foodData.addExhaustion(player.getFoodData().getExhaustionLevel());
+        foodData.setFoodLevel(player.getFoodData().getFoodLevel());
+        foodData.setSaturation(player.getFoodData().getSaturationLevel());
+        foodData.addExhaustion(player.getFoodData().getExhaustionLevel());
         player.getFoodData().setExhaustion(0);
 
         if (thirstPlugin != null) {
-            thirstPlugin.setThirst(this, thirstPlugin.getThirst(player));
-            thirstPlugin.setQuenched(this, thirstPlugin.getQuenched(player));
+            thirstPlugin.setThirst(heart, thirstPlugin.getThirst(player));
+            thirstPlugin.setQuenched(heart, thirstPlugin.getQuenched(player));
         }
 
         resetPreviousStats();
@@ -116,16 +142,15 @@ public class SharedLife extends FakePlayer {
     }
 
     private void resetPreviousStats() {
-        this.previousFoodLevel = this.foodData.getFoodLevel();
-        this.previousSaturation = this.foodData.getSaturationLevel();
+        previousFoodLevel = foodData.getFoodLevel();
+        previousSaturation = foodData.getSaturationLevel();
         if (thirstPlugin != null) {
-            this.previousThirst = thirstPlugin.getThirst(this);
-            this.previousQuenched = thirstPlugin.getQuenched(this);
+            previousThirst = thirstPlugin.getThirst(heart);
+            previousQuenched = thirstPlugin.getQuenched(heart);
         }
-        this.previousExperienceLevel = experienceLevel;
+        previousExperienceLevel = experienceLevel;
     }
 
-    @Override
     public void tick() {
         tickHunger();
         syncExperience();
@@ -136,24 +161,24 @@ public class SharedLife extends FakePlayer {
         if (hungryPlayers.isEmpty()) return;
 
         for (ServerPlayer player : hungryPlayers) {
-            var foodLevelChange = player.getFoodData().getFoodLevel() - this.previousFoodLevel;
-            var saturationChange = player.getFoodData().getSaturationLevel() - this.previousSaturation;
+            var foodLevelChange = player.getFoodData().getFoodLevel() - previousFoodLevel;
+            var saturationChange = player.getFoodData().getSaturationLevel() - previousSaturation;
             var exhaustionChange = player.getFoodData().getExhaustionLevel();
 
-            this.foodData.setFoodLevel(Math.max(0, this.foodData.getFoodLevel() + foodLevelChange));
-            this.foodData.setSaturation(Math.max(0, this.foodData.getSaturationLevel() + saturationChange));
-            this.foodData.addExhaustion(exhaustionChange);
+            foodData.setFoodLevel(Math.max(0, foodData.getFoodLevel() + foodLevelChange));
+            foodData.setSaturation(Math.max(0, foodData.getSaturationLevel() + saturationChange));
+            foodData.addExhaustion(exhaustionChange);
             player.getFoodData().setExhaustion(0);
 
             if (thirstPlugin != null) {
                 var thirstChange = thirstPlugin.getThirst(player) - previousThirst;
                 var quenchedChange = thirstPlugin.getQuenched(player) - previousQuenched;
-                thirstPlugin.setThirst(this, Math.max(0, thirstPlugin.getThirst(this) + thirstChange));
-                thirstPlugin.setQuenched(this, Math.max(0, thirstPlugin.getQuenched(this) + quenchedChange));
+                thirstPlugin.setThirst(heart, Math.max(0, thirstPlugin.getThirst(heart) + thirstChange));
+                thirstPlugin.setQuenched(heart, Math.max(0, thirstPlugin.getQuenched(heart) + quenchedChange));
             }
         }
 
-        this.foodData.tick(this);
+        foodData.tick(heart);
 
         for (ServerPlayer player : hungryPlayers) {
             applyHunger(player);
@@ -166,23 +191,23 @@ public class SharedLife extends FakePlayer {
         var expPlayers = getLiveSharedExperiencePlayers().toList();
 
         for (ServerPlayer player : expPlayers) {
-            var experienceLevelChange = player.experienceLevel - this.previousExperienceLevel;
-            this.setExperienceLevels(Math.max(0, this.experienceLevel + experienceLevelChange));
+            var experienceLevelChange = player.experienceLevel - previousExperienceLevel;
+            setExperienceLevels(Math.max(0, experienceLevel + experienceLevelChange));
         }
 
         for (ServerPlayer player : expPlayers) {
-            player.giveExperienceLevels(this.experienceLevel - player.experienceLevel);
+            player.giveExperienceLevels(experienceLevel - player.experienceLevel);
         }
 
-        this.previousExperienceLevel = this.experienceLevel;
+        previousExperienceLevel = experienceLevel;
     }
 
-    public void hurtBy(@Nullable ServerPlayer hurtPlayer, @NotNull DamageSource source, float amount) {
+    public void hurtByPlayer(@Nullable ServerPlayer hurtPlayer, @NotNull DamageSource source, float amount) {
         if (amount <= 0) return;
         if (source.is(ModDamageTypes.SHARED_LIFE)) return;
         if (hurtPlayer != null && !Players.isSharedHealthEnabled(hurtPlayer)) return;
 
-        this.setHealth(Math.max(0, getHealth() - amount));
+        setHealth(Math.max(0, getHealth() - amount));
 
         geSharedHealthPlayers().forEach(player -> {
             sendDamageMessage(player, hurtPlayer, source, amount);
@@ -195,18 +220,12 @@ public class SharedLife extends FakePlayer {
         });
     }
 
-    @Override
-    public boolean hurt(@NotNull DamageSource source, float amount) {
-        hurtBy(null, source, amount);
-        return true;
-    }
-
-    public void healBy(@Nullable ServerPlayer healedPlayer, float healAmount) {
+    public void healByPlayer(@Nullable ServerPlayer healedPlayer, float healAmount) {
         if (healAmount <= 0) return;
-        if (isDeadOrDying()) return;
+        if (isDead()) return;
         if (healedPlayer != null && !Players.isSharedHealthEnabled(healedPlayer)) return;
 
-        this.setHealth(getHealth() + healAmount);
+        setHealth(getHealth() + healAmount);
 
         getLiveSharedHealthPlayers().forEach(player -> {
             if (player != healedPlayer) {
@@ -216,19 +235,14 @@ public class SharedLife extends FakePlayer {
         });
     }
 
-    @Override
-    public void heal(float healAmount) {
-        healBy(null, healAmount);
-    }
-
     /**
      * Ends the shared life due to the given player's death.
      */
     public void killBy(@Nullable ServerPlayer deadPlayer) {
-        if (isDeadOrDying()) return;
+        if (isDead()) return;
         if (deadPlayer != null && !Players.isSharedHealthEnabled(deadPlayer)) return;
 
-        this.setHealth(0);
+        setHealth(0);
         LOG.debug("{} has caused shared life death.", deadPlayer != null ? deadPlayer.getName().getString() : "Unknown");
 
         getLiveSharedHealthPlayers().forEach(player -> {
@@ -236,11 +250,6 @@ public class SharedLife extends FakePlayer {
                 killPlayer(player);
             }
         });
-    }
-
-    @Override
-    public void kill() {
-        killBy(null);
     }
 
     private void killPlayer(@NotNull ServerPlayer player) {
@@ -274,19 +283,35 @@ public class SharedLife extends FakePlayer {
     }
 
     private Stream<ServerPlayer> geSharedHealthPlayers() {
-        return this.server.getPlayerList().getPlayers().stream().filter(Players::isSharedHealthEnabled);
+        return server.getPlayerList().getPlayers().stream().filter(Players::isSharedHealthEnabled);
     }
     private Stream<ServerPlayer> getLiveSharedHealthPlayers() {
-        return this.server.getPlayerList().getPlayers().stream()
+        return server.getPlayerList().getPlayers().stream()
                 .filter(player -> Players.isSharedHealthEnabled(player) && !player.isDeadOrDying());
     }
     private Stream<ServerPlayer> getLiveSharedHungerPlayers() {
-        return this.server.getPlayerList().getPlayers().stream()
+        return server.getPlayerList().getPlayers().stream()
                 .filter(player -> Players.isSharedHungerEnabled(player) && !player.isDeadOrDying());
     }
     private Stream<ServerPlayer> getLiveSharedExperiencePlayers() {
-        return this.server.getPlayerList().getPlayers().stream()
+        return server.getPlayerList().getPlayers().stream()
                 .filter(player -> Players.isSharedExperienceEnabled(player) && !player.isDeadOrDying());
+    }
+
+    private float getHealth() {
+        return heart.getHealth();
+    }
+
+    private void setHealth(float health) {
+        heart.setHealth(health);
+    }
+
+    private boolean isDead() {
+        return heart.isDeadOrDying();
+    }
+
+    private void setExperienceLevels(int experienceLevel) {
+        this.experienceLevel = experienceLevel;
     }
 
     @Override

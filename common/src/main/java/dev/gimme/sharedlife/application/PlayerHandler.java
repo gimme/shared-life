@@ -22,11 +22,11 @@ public class PlayerHandler {
     }
 
     public void onPlayerDamage(@NotNull ServerPlayer player, DamageSource source, float amount) {
-        sharedLife.hurtBy(player, source, amount);
+        sharedLife.hurtByPlayer(player, source, amount);
     }
 
     public void onPlayerHeal(@NotNull ServerPlayer player, float amount) {
-        sharedLife.healBy(player, amount);
+        sharedLife.healByPlayer(player, amount);
     }
 
     public void onPlayerDeath(@NotNull ServerPlayer player) {
