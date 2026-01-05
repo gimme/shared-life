@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.food.FoodData;
 import org.jetbrains.annotations.NotNull;
@@ -232,9 +233,12 @@ public class SharedLife {
 
         setHealth(getHealth() - amount);
 
-        geSharedHealthPlayers().forEach(player -> {
-            sendDamageMessage(player, hurtPlayer, source, amount);
-        });
+        geSharedHealthPlayers().forEach(player -> sendDamageMessage(player, hurtPlayer, source, amount));
+
+        if (source.is(DamageTypes.STARVE)) {
+            // Starvation is the one damage type that applies to all players individually
+            getLiveSharedHealthPlayers().forEach(player -> player.hurt(damageSource, amount));
+        }
     }
 
     public void healByPlayer(@Nullable ServerPlayer healedPlayer, float healAmount) {
