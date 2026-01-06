@@ -1,6 +1,6 @@
 # Shared Life
 
-Minecraft mod for multiplayer shared health and hunger.
+Minecraft server mod that makes all players share one health/hunger bar.
 
 
 ## Credits
