@@ -67,7 +67,6 @@ jobs:
       - build
 
   publish:
-    if: false # TODO: Remove this line when ready to publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
