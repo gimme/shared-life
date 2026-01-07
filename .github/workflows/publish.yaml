@@ -53,6 +53,12 @@ jobs:
         id: changelog
         uses: ffurrer2/extract-release-notes@v2
 
+      - name: Print changelog (for debugging) # TODO: Remove this step when verified
+        run: |
+          echo "Changelog for ${{ steps.vars.outputs.tag }}:"
+          echo "${{ steps.changelog.outputs.release-notes }}"
+          echo "${{ steps.changelog.outputs.release-notes }}" > ./temp_changelog.md
+
       - name: Download build artifact
         uses: actions/download-artifact@v7
         with:
@@ -64,7 +70,8 @@ jobs:
         with:
           tag: ${{ steps.vars.outputs.tag }}
           commit: ${{ github.ref }}
-          body: ${{ steps.changelog.outputs.release-notes }}
+#          body: ${{ steps.changelog.outputs.release-notes }}
+          bodyFile: ./temp_changelog.md
           artifacts: './build-artifact/**/build/libs/*.jar'
     needs:
       - build
