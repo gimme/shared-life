@@ -53,13 +53,6 @@ jobs:
         id: changelog
         uses: ffurrer2/extract-release-notes@v2
 
-      - name: Create tag
-        id: tag
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_tag: ${{ steps.vars.outputs.tag }}
-
       - name: Download build artifact
         uses: actions/download-artifact@v7
         with:
@@ -70,12 +63,14 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.vars.outputs.tag }}
+          commit: ${{ github.ref }}
           body: ${{ steps.changelog.outputs.release-notes }}
           artifacts: './build-artifact/**/build/libs/!(*-@(dev|sources|javadoc)).jar'
     needs:
       - build
 
   publish:
+    if: false # TODO: Remove this line when ready to publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
