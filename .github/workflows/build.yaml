@@ -30,6 +30,5 @@ jobs:
         with:
           name: build-artifact
           path: |
-            forge/build/libs/*.jar
             neoforge/build/libs/*.jar
           if-no-files-found: error

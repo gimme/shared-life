@@ -72,7 +72,8 @@ jobs:
       contents: write
     strategy:
       matrix:
-        loader: [forge, neoforge]
+        # List of loaders to publish for
+        loader: [neoforge]
       fail-fast: false
     steps:
       - name: Download build artifact
