@@ -2,6 +2,8 @@
 
 Minecraft server mod that makes all players share one health/hunger bar.
 
+![Logo](/images/logo.png)
+
 
 ## Credits
 

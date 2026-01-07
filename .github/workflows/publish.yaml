@@ -1,0 +1,123 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: build.yaml
+
+  prepare-loaders:
+    runs-on: ubuntu-latest
+    outputs:
+      loaders: ${{ fromJSON(steps.get-loaders.outputs.result) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare loaders list
+        id: get-loaders
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const settingsGradle = fs.readFileSync('settings.gradle', 'utf8');
+            const includePattern = /^(?!\s*\/\/)\s*include\s*\(\s*(['"]([^'"]+)['"](?:,\s*['"]([^'"]+)['"])*\s*)\)/gm;
+            const includes = [...settingsGradle.matchAll(includePattern)].flatMap(match => match[0].match(/['"]([^'"]+)['"]/g).map(item => item.replace(/['"]/g, '')));
+            const includeFabric = includes.includes('fabric');
+            const includeForge = includes.includes('forge');
+            const includeNeoForge = includes.includes('neoforge');
+            return [includeFabric ? 'fabric' : false, includeForge ? 'forge' : false, includeNeoForge ? 'neoforge' : false].filter(Boolean)
+
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        loader: ${{ needs.prepare-loaders.outputs.loaders }}
+      fail-fast: false
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v7
+        with:
+          name: build-artifacts
+          path: ./build-artifacts
+
+      - uses: actions/checkout@v4
+
+      - name: Read Gradle properties
+        id: properties
+        uses: christian-draeger/read-properties@1.1.1
+        with:
+          path: './gradle.properties'
+          properties: 'mod_id version minecraft_version minecraft_version_range'
+
+      - name: Set up variables
+        id: vars
+        run: |
+          version="${{ steps.properties.outputs.version }}"
+          minecraft_version="${{ steps.properties.outputs.minecraft_version }}"
+          full_version="${minecraft_version}-${version}"
+
+          echo "full_version=${full_version}" >> $GITHUB_OUTPUT
+          echo "tag=v${full_version}" >> $GITHUB_OUTPUT
+
+      - name: Verify changelog entry exists
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const tag = '${{ steps.vars.outputs.tag }}';
+            const versionHeader = `## [${tag}]`;
+            if (!changelog.includes(versionHeader)) {
+              throw new Error(`Changelog does not contain an entry for version ${tag}. Please add a corresponding section to CHANGELOG.md.`);
+            }
+
+      - name: Read changelog
+        id: changelog
+        uses: ffurrer2/extract-release-notes@v2
+
+      - name: Create tag
+        id: tag
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ steps.vars.outputs.tag }}
+
+        # TODO: Enable if you want to create GitHub releases manually, otherwise remove this block
+#      - name: Create release
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: gh release create '${{ steps.vars.outputs.tag }}' --notes '${{ steps.changelog.outputs.release-notes }}'
+#      - name: Create a GitHub release
+#        uses: ncipollo/release-action@v1
+#        with:
+#          tag: ${{ vars.outputs.tag }}
+#          body: ${{ steps.changelog.outputs.release-notes }}
+
+      - name: Publish to platforms and GitHub
+        uses: Kir-Antipov/mc-publish@v3.3
+        with:
+          # CurseForge
+          curseforge-id: 1422169
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }} # TODO: Set up CurseForge API token in repository secrets
+
+          # Modrinth # TODO: Enable when Modrinth project is set up
+#          modrinth-id: <modrinth-id>
+#          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+
+          # GitHub
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-tag: ${{ steps.vars.outputs.tag }}
+
+          # General
+          files: ./build-artifacts/${{ matrix.loader }}/build/libs/*.jar
+          name: '${{ steps.properties.outputs.mod_id }}-${{ matrix.loader }}-${{ steps.vars.outputs.full_version }}'
+          version: '${{ steps.vars.outputs.full_version }}'
+          changelog: ${{ steps.changelog.outputs.release-notes }}
+          loaders: ${{ matrix.loader }}
+          game-versions: ${{ steps.properties.outputs.minecraft_version_range }}
+    needs:
+      - build
+      - prepare-loaders
