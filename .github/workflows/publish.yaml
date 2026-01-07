@@ -95,7 +95,7 @@ jobs:
         with:
           # CurseForge
           curseforge-id: 1422169
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }} # TODO: Set up CurseForge API token in repository secrets
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
 
           # TODO: Enable when Modrinth project is set up
           # Modrinth
