@@ -8,5 +8,5 @@ import net.minecraft.world.damagesource.DamageType;
 
 public class ModDamageTypes {
 
-    public static final ResourceKey<DamageType> SHARED_LIFE = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath(Constants.MOD_ID, "shared_life"));
+    public static final ResourceKey<DamageType> SHARED_LIFE = ResourceKey.create(Registries.DAMAGE_TYPE, new ResourceLocation(Constants.MOD_ID, "shared_life"));
 }

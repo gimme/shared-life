@@ -73,7 +73,7 @@ jobs:
     strategy:
       matrix:
         # List of loaders to publish for
-        loader: [neoforge]
+        loader: [forge]
       fail-fast: false
     steps:
       - name: Download build artifact
@@ -99,7 +99,9 @@ jobs:
           name: '${{ needs.release.outputs.mod_id }}-${{ matrix.loader }}-${{ needs.release.outputs.full_version }}'
           version: '${{ needs.release.outputs.full_version }}'
           changelog: ${{ needs.release.outputs.changelog }}
-          loaders: ${{ matrix.loader }}
+          loaders: |
+            forge
+            neoforge
           game-versions: ${{ needs.release.outputs.minecraft_version_range }}
     needs:
       - build

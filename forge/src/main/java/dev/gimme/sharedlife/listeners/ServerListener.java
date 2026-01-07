@@ -1,8 +1,8 @@
 package dev.gimme.sharedlife.listeners;
 
 import dev.gimme.sharedlife.application.ServerHandler;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class ServerListener {
 
@@ -13,7 +13,8 @@ public class ServerListener {
     }
 
     @SubscribeEvent
-    public void onServerTick(ServerTickEvent.Post event) {
+    public void onServerTick(TickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
         serverHandler.onServerTick();
     }
 }

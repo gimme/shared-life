@@ -5,20 +5,13 @@ import java.util.OptionalInt;
 import java.util.Set;
 import javax.annotation.ParametersAreNonnullByDefault;
 import net.minecraft.network.Connection;
-import net.minecraft.network.DisconnectionDetails;
-import net.minecraft.network.PacketListener;
 import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.common.ServerboundClientInformationPacket;
-import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
-import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
-import net.minecraft.network.protocol.common.ServerboundResourcePackPacket;
 import net.minecraft.network.protocol.game.ServerboundAcceptTeleportationPacket;
-import net.minecraft.network.protocol.game.ServerboundBlockEntityTagQueryPacket;
 import net.minecraft.network.protocol.game.ServerboundChangeDifficultyPacket;
 import net.minecraft.network.protocol.game.ServerboundChatAckPacket;
 import net.minecraft.network.protocol.game.ServerboundChatCommandPacket;
@@ -30,7 +23,6 @@ import net.minecraft.network.protocol.game.ServerboundContainerButtonClickPacket
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
 import net.minecraft.network.protocol.game.ServerboundEditBookPacket;
-import net.minecraft.network.protocol.game.ServerboundEntityTagQueryPacket;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.network.protocol.game.ServerboundJigsawGeneratePacket;
 import net.minecraft.network.protocol.game.ServerboundLockDifficultyPacket;
@@ -61,10 +53,8 @@ import net.minecraft.network.protocol.game.ServerboundTeleportToEntityPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.stats.Stat;
 import net.minecraft.world.Container;
@@ -84,7 +74,7 @@ import org.jetbrains.annotations.Nullable;
 public class FakePlayer extends ServerPlayer {
 
     public FakePlayer(ServerLevel level, GameProfile name) {
-        super(level.getServer(), level, name, ClientInformation.createDefault());
+        super(level.getServer(), level, name);
         this.connection = new FakePlayerNetHandler(level.getServer(), this);
     }
 
@@ -111,9 +101,6 @@ public class FakePlayer extends ServerPlayer {
     public void tick() {}
 
     @Override
-    public void updateOptions(ClientInformation p_301998_) {}
-
-    @Override
     public @NotNull OptionalInt openMenu(@Nullable MenuProvider menuProvider) {
         return OptionalInt.empty();
     }
@@ -131,7 +118,7 @@ public class FakePlayer extends ServerPlayer {
         private static final Connection DUMMY_CONNECTION = new FakeConnection();
 
         public FakePlayerNetHandler(MinecraftServer server, ServerPlayer player) {
-            super(server, DUMMY_CONNECTION, player, CommonListenerCookie.createInitial(player.getGameProfile(), false));
+            super(server, DUMMY_CONNECTION, player);
         }
 
         @Override
@@ -195,12 +182,6 @@ public class FakePlayer extends ServerPlayer {
         public void handleEditBook(ServerboundEditBookPacket packet) {}
 
         @Override
-        public void handleEntityTagQuery(ServerboundEntityTagQueryPacket packet) {}
-
-        @Override
-        public void handleBlockEntityTagQuery(ServerboundBlockEntityTagQueryPacket packet) {}
-
-        @Override
         public void handleMovePlayer(ServerboundMovePlayerPacket packet) {}
 
         @Override
@@ -219,13 +200,7 @@ public class FakePlayer extends ServerPlayer {
         public void handleTeleportToEntityPacket(ServerboundTeleportToEntityPacket packet) {}
 
         @Override
-        public void handleResourcePackResponse(ServerboundResourcePackPacket p_295695_) {}
-
-        @Override
         public void handlePaddleBoat(ServerboundPaddleBoatPacket packet) {}
-
-        @Override
-        public void onDisconnect(DisconnectionDetails details) {}
 
         @Override
         public void send(Packet<?> packet) {}
@@ -270,15 +245,6 @@ public class FakePlayer extends ServerPlayer {
         public void handleSignUpdate(ServerboundSignUpdatePacket packet) {}
 
         @Override
-        public void handleKeepAlive(ServerboundKeepAlivePacket p_294627_) {}
-
-        @Override
-        public void handleCustomPayload(ServerboundCustomPayloadPacket p_294276_) {}
-
-        @Override
-        public void handleClientInformation(ServerboundClientInformationPacket p_301979_) {}
-
-        @Override
         public void handlePlayerAbilities(ServerboundPlayerAbilitiesPacket packet) {}
 
         @Override
@@ -316,8 +282,5 @@ public class FakePlayer extends ServerPlayer {
         public FakeConnection() {
             super(PacketFlow.SERVERBOUND);
         }
-
-        @Override
-        public void setListenerForServerboundHandshake(PacketListener listener) {}
     }
 }

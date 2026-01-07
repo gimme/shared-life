@@ -2,12 +2,12 @@ package dev.gimme.sharedlife.listeners;
 
 import dev.gimme.sharedlife.application.PlayerHandler;
 import net.minecraft.server.level.ServerPlayer;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
-import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
-import net.neoforged.neoforge.event.entity.living.LivingHealEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.living.LivingDamageEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingHealEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 public class PlayerListener {
 
@@ -30,9 +30,9 @@ public class PlayerListener {
     }
 
     @SubscribeEvent
-    public void onDamage(LivingDamageEvent.Post event) {
+    public void onDamage(LivingDamageEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerDamage(player, event.getSource(), event.getNewDamage());
+        playerHandler.onPlayerDamage(player, event.getSource(), event.getAmount());
     }
 
     @SubscribeEvent

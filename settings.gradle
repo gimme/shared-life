@@ -33,4 +33,4 @@ plugins {
 
 rootProject.name = 'shared-life'
 include('common')
-include('neoforge')
+include('forge')

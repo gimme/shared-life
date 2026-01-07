@@ -1,24 +1,24 @@
 package dev.gimme.sharedlife;
 
 import dev.gimme.sharedlife.domain.config.ServerConfig;
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
-public class NeoForgeServerConfig extends ServerConfig {
-    private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
+public class ForgeServerConfig extends ServerConfig {
+    private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
-    private static final ModConfigSpec.BooleanValue SHARE_HEALTH = BUILDER
+    private static final ForgeConfigSpec.BooleanValue SHARE_HEALTH = BUILDER
             .comment("If health should be shared among players")
             .define("shareHealth", true);
 
-    private static final ModConfigSpec.BooleanValue SHARE_HUNGER = BUILDER
+    private static final ForgeConfigSpec.BooleanValue SHARE_HUNGER = BUILDER
             .comment("If hunger should be shared among players")
             .define("shareHunger", true);
 
-    private static final ModConfigSpec.BooleanValue SHARE_EXPERIENCE = BUILDER
+    private static final ForgeConfigSpec.BooleanValue SHARE_EXPERIENCE = BUILDER
             .comment("If experience should be shared among players")
             .define("shareExperience", false);
 
-    static final ModConfigSpec SPEC = BUILDER.build();
+    static final ForgeConfigSpec SPEC = BUILDER.build();
 
     @Override
     public boolean shareHealth() {
