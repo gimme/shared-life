@@ -65,7 +65,7 @@ jobs:
           tag: ${{ steps.vars.outputs.tag }}
           commit: ${{ github.ref }}
           body: ${{ steps.changelog.outputs.release-notes }}
-          artifacts: './build-artifact/**/build/libs/!(*-@(dev|sources|javadoc)).jar'
+          artifacts: './build-artifact/**/build/libs/*.jar'
     needs:
       - build
 
