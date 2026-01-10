@@ -62,7 +62,7 @@ jobs:
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create ${{ steps.vars.outputs.tag }} ./build-artifact/**/build/libs/*.jar --notes '${{ steps.changelog.outputs.release_notes }}'
+        run: gh release create ${{ steps.vars.outputs.tag }} ./build-artifact/*.jar --notes '${{ steps.changelog.outputs.release_notes }}'
     needs:
       - build
 
@@ -82,7 +82,7 @@ jobs:
           name: build-artifact
           path: ./build-artifact
 
-      - name: Publish to platforms and GitHub
+      - name: Publish to platforms
         uses: Kir-Antipov/mc-publish@v3.3
         with:
           # CurseForge
@@ -95,7 +95,7 @@ jobs:
 #          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
           # General
-          files: ./build-artifact/${{ matrix.loader }}/build/libs/!(*-@(dev|sources|javadoc)).jar
+          files: ./build-artifact/*-${{ matrix.loader }}-${{ needs.release.outputs.full_version }}.jar
           name: '${{ needs.release.outputs.mod_id }}-${{ matrix.loader }}-${{ needs.release.outputs.full_version }}'
           version: '${{ needs.release.outputs.full_version }}'
           changelog: ${{ needs.release.outputs.changelog }}
