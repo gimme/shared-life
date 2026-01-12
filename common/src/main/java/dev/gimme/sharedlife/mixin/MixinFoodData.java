@@ -11,6 +11,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * Modifies FoodData ticks to allow this mod to manage hunger.
+ */
 @Mixin(FoodData.class)
 public abstract class MixinFoodData {
 
@@ -20,11 +23,16 @@ public abstract class MixinFoodData {
     @Shadow
     private int lastFoodLevel;
 
+    /**
+     * Disables regular hunger mechanics for players so that it can be managed by {@link SharedLife.Heart}.
+     */
     @Inject(method = "tick", at = @At(value = "HEAD"), cancellable = true, require = 1)
-    private void tick(Player player, CallbackInfo ci) {
-        if (!(player instanceof SharedLife.Heart) && player instanceof ServerPlayer serverPlayer && Players.isSharedHungerEnabled(serverPlayer)) {
-            this.lastFoodLevel = this.foodLevel;
-            ci.cancel();
-        }
+    private void disableHunger(Player player, CallbackInfo ci) {
+        if (player instanceof SharedLife.Heart) return;
+        if (!(player instanceof ServerPlayer serverPlayer)) return;
+        if (!Players.isSharedHungerEnabled(serverPlayer)) return;
+
+        this.lastFoodLevel = this.foodLevel;
+        ci.cancel();
     }
 }
