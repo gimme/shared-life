@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.20.1-0.1.1] - 2026-01-12
+
 ### Added
 
 - Add option to disable damage announcements in chat
 
-## [v1.21.1-0.1.0] - 2026-01-07
+## [v1.20.1-0.1.0] - 2026-01-07
 
 ### Added
 
