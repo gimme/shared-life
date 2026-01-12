@@ -89,10 +89,9 @@ jobs:
           curseforge-id: 1422169
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
 
-          # TODO: Enable when Modrinth project is set up
           # Modrinth
-#          modrinth-id: <modrinth-id>
-#          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          modrinth-id: 4kzSEhdr
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
 
           # General
           files: ./build-artifact/*-${{ matrix.loader }}-${{ needs.release.outputs.full_version }}.jar
