@@ -2,6 +2,7 @@ package dev.gimme.sharedlife.domain;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.logging.LogUtils;
+import dev.gimme.sharedlife.domain.config.ServerConfig;
 import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import dev.gimme.sharedlife.domain.util.Constants;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
@@ -237,7 +238,8 @@ public class SharedLife {
         geSharedHealthPlayers().forEach(player -> sendDamageMessage(player, hurtPlayer, source, amount));
 
         if (source.is(DamageTypes.STARVE)) {
-            // Starvation is the one damage type that applies to all players individually
+            // Starvation is the one damage type that applies to all players individually,
+            // other damage is applied in the tick method.
             getLiveSharedHealthPlayers().forEach(player -> player.hurt(damageSource, amount));
         }
     }
@@ -270,7 +272,7 @@ public class SharedLife {
      */
     private void sendDamageMessage(@NotNull ServerPlayer toPlayer, @Nullable Entity sourceEntity, @NotNull DamageSource source, float damage) {
         var name = sourceEntity != null ? sourceEntity.getName().getString() : Constants.MOD_NAME;
-        var formattedHearts = HEARTS_DECIMAL_FORMAT.format(damage / 2) + " ❤";
+        var formattedHearts = HEARTS_DECIMAL_FORMAT.format(damage / 2);
         var damageSourceEntity = source.getEntity() != null ? source.getEntity() : source.getDirectEntity();
         var damageSourceName = damageSourceEntity != null ? damageSourceEntity.getName().getString() : source.getMsgId();
 
@@ -281,14 +283,22 @@ public class SharedLife {
                 .append(Component.literal(" "))
                 .append(Component.literal(formattedHearts).withStyle(Style.EMPTY.withColor(ChatFormatting.RED)))
                 .append(Component.literal(" "))
-                .append(Component.translatableWithFallback("message.sharedlife.damage", "damage"))
+                .append(Component.literal("❤").withStyle(Style.EMPTY.withColor(ChatFormatting.DARK_RED)))
                 .append(Component.literal(" "))
-                .append(Component.translatableWithFallback("message.sharedlife.from", "from"))
-                .append(Component.literal(" "))
-                .append(Component.literal(damageSourceName).withStyle(Style.EMPTY.withColor(ChatFormatting.WHITE)));
+                .append(Component.translatableWithFallback("message.sharedlife.damage", "damage"));
 
+        if (ServerConfig.INSTANCE.includeDamageSource()) {
+            message
+                    .append(Component.literal(" "))
+                    .append(Component.translatableWithFallback("message.sharedlife.from", "from"))
+                    .append(Component.literal(" "))
+                    .append(Component.literal(damageSourceName).withStyle(Style.EMPTY.withColor(ChatFormatting.WHITE).withItalic(true)));
+        }
+
+        if (ServerConfig.INSTANCE.announceDamage()) {
+            toPlayer.sendSystemMessage(message, false);
+        }
         LOG.debug(message.getString());
-        toPlayer.sendSystemMessage(message, false);
     }
 
     private Stream<ServerPlayer> geSharedHealthPlayers() {

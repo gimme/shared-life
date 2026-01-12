@@ -18,6 +18,14 @@ public class NeoForgeServerConfig extends ServerConfig {
             .comment("If experience should be shared among players")
             .define("shareExperience", false);
 
+    private static final ModConfigSpec.BooleanValue ANNOUNCE_DAMAGE = BUILDER
+            .comment("If damage events should be announced in chat")
+            .define("announceDamage", true);
+
+    private static final ModConfigSpec.BooleanValue INCLUDE_DAMAGE_SOURCE = BUILDER
+            .comment("If the source of the damage should be included in announcements")
+            .define("includeDamageSource", true);
+
     static final ModConfigSpec SPEC = BUILDER.build();
 
     @Override
@@ -33,5 +41,15 @@ public class NeoForgeServerConfig extends ServerConfig {
     @Override
     public boolean shareExperience() {
         return SHARE_EXPERIENCE.get();
+    }
+
+    @Override
+    public boolean announceDamage() {
+        return ANNOUNCE_DAMAGE.get();
+    }
+
+    @Override
+    public boolean includeDamageSource() {
+        return INCLUDE_DAMAGE_SOURCE.get();
     }
 }
