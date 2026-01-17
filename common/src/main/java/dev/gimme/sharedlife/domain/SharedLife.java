@@ -5,6 +5,7 @@ import com.mojang.logging.LogUtils;
 import dev.gimme.sharedlife.domain.config.ServerConfig;
 import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import dev.gimme.sharedlife.domain.util.Constants;
+import dev.gimme.sharedlife.domain.util.ExtractingValueOutput;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
 import dev.gimme.sharedlife.domain.util.Players;
 import net.minecraft.ChatFormatting;
@@ -14,9 +15,9 @@ import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket;
 import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
@@ -67,7 +68,7 @@ public class SharedLife {
         }
 
         @Override
-        public boolean hurt(@NotNull DamageSource source, float amount) {
+        public boolean hurtServer(@NotNull ServerLevel level, @NotNull DamageSource source, float amount) {
             hurtByPlayer(null, source, amount);
             return true;
         }
@@ -134,8 +135,8 @@ public class SharedLife {
 
         foodData.setFoodLevel(player.getFoodData().getFoodLevel());
         foodData.setSaturation(player.getFoodData().getSaturationLevel());
-        foodData.addExhaustion(player.getFoodData().getExhaustionLevel());
-        player.getFoodData().setExhaustion(0);
+        foodData.addExhaustion(getExhaustionLevel(player.getFoodData()));
+        resetExhaustionLevel(player.getFoodData());
 
         if (thirstPlugin != null) {
             thirstPlugin.setThirst(heart, thirstPlugin.getThirst(player));
@@ -169,12 +170,12 @@ public class SharedLife {
         for (ServerPlayer player : hungryPlayers) {
             var foodLevelChange = player.getFoodData().getFoodLevel() - previousFoodLevel;
             var saturationChange = player.getFoodData().getSaturationLevel() - previousSaturation;
-            var exhaustionChange = player.getFoodData().getExhaustionLevel();
+            var exhaustionChange = getExhaustionLevel(player.getFoodData());
 
             foodData.setFoodLevel(Math.max(0, foodData.getFoodLevel() + foodLevelChange));
             foodData.setSaturation(Math.max(0, foodData.getSaturationLevel() + saturationChange));
             foodData.addExhaustion(exhaustionChange);
-            player.getFoodData().setExhaustion(0);
+            resetExhaustionLevel(player.getFoodData());
 
             if (thirstPlugin != null) {
                 var thirstChange = thirstPlugin.getThirst(player) - previousThirst;
@@ -208,7 +209,7 @@ public class SharedLife {
 
             if (healthChange < 0) {
                 player.connection.send(new ClientboundHurtAnimationPacket(player));
-                player.playNotifySound(SoundEvents.PLAYER_HURT, SoundSource.PLAYERS, 0.5f, 0.8f);
+                player.playSound(SoundEvents.PLAYER_HURT, 0.5f, 0.8f);
             }
         });
     }
@@ -240,7 +241,7 @@ public class SharedLife {
         if (source.is(DamageTypes.STARVE)) {
             // Starvation is the one damage type that applies to all players individually,
             // other damage is applied in the tick method.
-            getLiveSharedHealthPlayers().forEach(player -> player.hurt(damageSource, amount));
+            getLiveSharedHealthPlayers().forEach(player -> player.hurtServer(player.level(), damageSource, amount));
         }
     }
 
@@ -264,7 +265,7 @@ public class SharedLife {
     }
 
     private void killPlayer(@NotNull ServerPlayer player) {
-        player.hurt(damageSource, Float.MAX_VALUE);
+        player.hurtServer(player.level(), damageSource, Float.MAX_VALUE);
     }
 
     /**
@@ -336,6 +337,16 @@ public class SharedLife {
     @Override
     public @NotNull String toString() {
         return "SharedLife(health=%s, foodLevel=%s, saturation=%s, exhaustion=%s, experienceLevel=%s)"
-                .formatted(getHealth(), foodData.getFoodLevel(), foodData.getSaturationLevel(), foodData.getExhaustionLevel(), experienceLevel);
+                .formatted(getHealth(), foodData.getFoodLevel(), foodData.getSaturationLevel(), getExhaustionLevel(foodData), experienceLevel);
+    }
+
+    private static final ExtractingValueOutput EXTRACTING_VALUE_OUTPUT = new ExtractingValueOutput();
+    private static float getExhaustionLevel(FoodData foodData) {
+        foodData.addAdditionalSaveData(EXTRACTING_VALUE_OUTPUT);
+        return EXTRACTING_VALUE_OUTPUT.getExhaustion();
+    }
+    private static void resetExhaustionLevel(FoodData foodData) {
+        float exhaustion = getExhaustionLevel(foodData);
+        foodData.addExhaustion(-exhaustion);
     }
 }
