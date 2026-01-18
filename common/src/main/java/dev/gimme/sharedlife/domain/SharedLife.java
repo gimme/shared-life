@@ -9,15 +9,18 @@ import dev.gimme.sharedlife.domain.util.ExtractingValueOutput;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
 import dev.gimme.sharedlife.domain.util.Players;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket;
 import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
@@ -208,8 +211,7 @@ public class SharedLife {
             player.connection.send(new ClientboundSetHealthPacket(player.getHealth(), player.getFoodData().getFoodLevel(), player.getFoodData().getSaturationLevel()));
 
             if (healthChange < 0) {
-                player.connection.send(new ClientboundHurtAnimationPacket(player));
-                player.playSound(SoundEvents.PLAYER_HURT, 0.5f, 0.8f);
+                notifyHurt(player);
             }
         });
     }
@@ -348,5 +350,16 @@ public class SharedLife {
     private static void resetExhaustionLevel(FoodData foodData) {
         float exhaustion = getExhaustionLevel(foodData);
         foodData.addExhaustion(-exhaustion);
+    }
+
+    /**
+     * Notifies the given player that they have been hurt visually and audibly.
+     */
+    private static void notifyHurt(ServerPlayer player) {
+        var volume = 0.5f;
+        var pitch = 0.8f;
+
+        player.connection.send(new ClientboundHurtAnimationPacket(player));
+        player.connection.send(new ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(SoundEvents.PLAYER_HURT), SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), volume, pitch, player.level().random.nextLong()));
     }
 }
