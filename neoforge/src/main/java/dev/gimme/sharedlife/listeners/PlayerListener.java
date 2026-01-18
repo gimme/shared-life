@@ -26,7 +26,7 @@ public class PlayerListener {
     @SubscribeEvent
     public void onChangeGameMode(PlayerEvent.PlayerChangeGameModeEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerChangeGameMode(player);
+        playerHandler.onPlayerChangeGameMode(player, event.getNewGameMode());
     }
 
     @SubscribeEvent

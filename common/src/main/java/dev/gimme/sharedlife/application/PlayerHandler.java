@@ -3,6 +3,7 @@ package dev.gimme.sharedlife.application;
 import dev.gimme.sharedlife.domain.SharedLife;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.level.GameType;
 import org.jetbrains.annotations.NotNull;
 
 public class PlayerHandler {
@@ -17,7 +18,8 @@ public class PlayerHandler {
         sharedLife.includePotentialNewPlayer(player);
     }
 
-    public void onPlayerChangeGameMode(@NotNull ServerPlayer player) {
+    public void onPlayerChangeGameMode(@NotNull ServerPlayer player, GameType newGameMode) {
+        if (newGameMode == GameType.SPECTATOR || newGameMode == GameType.CREATIVE) return;
         sharedLife.includePotentialNewPlayer(player);
     }
 

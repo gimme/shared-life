@@ -307,15 +307,15 @@ public class SharedLife {
     }
     private Stream<ServerPlayer> getLiveSharedHealthPlayers() {
         return server.getPlayerList().getPlayers().stream()
-                .filter(player -> Players.isSharedHealthEnabled(player) && !player.isDeadOrDying());
+                .filter(player -> !player.isDeadOrDying() && Players.isSharedHealthEnabled(player));
     }
     private Stream<ServerPlayer> getLiveSharedHungerPlayers() {
         return server.getPlayerList().getPlayers().stream()
-                .filter(player -> Players.isSharedHungerEnabled(player) && !player.isDeadOrDying());
+                .filter(player -> !player.isDeadOrDying() && Players.isSharedHungerEnabled(player));
     }
     private Stream<ServerPlayer> getLiveSharedExperiencePlayers() {
         return server.getPlayerList().getPlayers().stream()
-                .filter(player -> Players.isSharedExperienceEnabled(player) && !player.isDeadOrDying());
+                .filter(player -> !player.isDeadOrDying() && Players.isSharedExperienceEnabled(player));
     }
 
     private float getHealth() {

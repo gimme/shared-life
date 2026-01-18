@@ -15,6 +15,8 @@ neoForge {
         configureEach {
             systemProperty('neoforge.enabledGameTestNamespaces', mod_id)
             ideName = "NeoForge ${it.name.capitalize()} (${project.path})" // Unify the run config names with fabric
+            logLevel = org.slf4j.event.Level.DEBUG
+            jvmArguments.addAll "-Dmixin.debug.export=true", "-Dmixin.debug.countInjections=true"
         }
         client {
             client()
