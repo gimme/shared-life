@@ -30,6 +30,6 @@ jobs:
         with:
           name: build-artifact
           path: |
-            neoforge/build/libs/*.jar
             fabric/build/libs/*.jar
+            neoforge/build/libs/*.jar
           if-no-files-found: error
