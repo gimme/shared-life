@@ -1,4 +1,4 @@
-package dev.gimme.sharedlife.listeners;
+package dev.gimme.sharedlife.neoforge.listeners;
 
 import dev.gimme.sharedlife.application.PlayerHandler;
 import net.minecraft.server.level.ServerPlayer;

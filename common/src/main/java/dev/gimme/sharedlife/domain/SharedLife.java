@@ -2,6 +2,7 @@ package dev.gimme.sharedlife.domain;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.logging.LogUtils;
+import dev.gimme.sharedlife.Main;
 import dev.gimme.sharedlife.domain.config.ServerConfig;
 import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import dev.gimme.sharedlife.domain.util.Constants;
@@ -290,7 +291,7 @@ public class SharedLife {
                 .append(Component.literal(" "))
                 .append(Component.translatableWithFallback("message.sharedlife.damage", "damage"));
 
-        if (ServerConfig.INSTANCE.includeDamageSource()) {
+        if (Main.INSTANCE.getServerConfig().includeDamageSource()) {
             message
                     .append(Component.literal(" "))
                     .append(Component.translatableWithFallback("message.sharedlife.from", "from"))
@@ -298,7 +299,7 @@ public class SharedLife {
                     .append(Component.literal(damageSourceName).withStyle(Style.EMPTY.withColor(ChatFormatting.WHITE).withItalic(true)));
         }
 
-        if (ServerConfig.INSTANCE.announceDamage()) {
+        if (Main.INSTANCE.getServerConfig().announceDamage()) {
             toPlayer.sendSystemMessage(message, false);
         }
         LOG.debug(message.getString());

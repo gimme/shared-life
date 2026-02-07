@@ -2,7 +2,6 @@ package dev.gimme.sharedlife.domain.util;
 
 import com.mojang.authlib.GameProfile;
 import java.util.OptionalInt;
-import javax.annotation.ParametersAreNonnullByDefault;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.chat.ChatType;
@@ -72,7 +71,6 @@ import org.jetbrains.annotations.Nullable;
 /**
  * A basic fake server player implementation that can be used to simulate player actions.
  */
-@ParametersAreNonnullByDefault
 public class FakePlayer extends ServerPlayer {
 
     public FakePlayer(ServerLevel level, GameProfile name) {
@@ -105,7 +103,6 @@ public class FakePlayer extends ServerPlayer {
         return OptionalInt.empty();
     }
 
-    @ParametersAreNonnullByDefault
     private static class FakePlayerNetHandler extends ServerGamePacketListenerImpl {
         private static final net.minecraft.network.Connection DUMMY_CONNECTION = new FakeConnection();
 

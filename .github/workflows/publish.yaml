@@ -73,7 +73,7 @@ jobs:
     strategy:
       matrix:
         # List of loaders to publish for
-        loader: [neoforge]
+        loader: [neoforge, fabric]
       fail-fast: false
     steps:
       - name: Download build artifact

@@ -2,8 +2,6 @@ package dev.gimme.sharedlife.domain.config;
 
 public abstract class ServerConfig {
 
-    public static ServerConfig INSTANCE;
-
     public abstract boolean shareHealth();
     public abstract boolean shareHunger();
     public abstract boolean shareExperience();
