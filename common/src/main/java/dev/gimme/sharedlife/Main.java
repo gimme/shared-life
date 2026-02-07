@@ -28,7 +28,7 @@ public class Main {
         NightServerConfig.SPEC.init(configDir, Constants.MOD_ID + "-server.toml");
         this.serverConfig = new NightServerConfig();
 
-        SharedLife sharedLife = new SharedLife(server);
+        SharedLife sharedLife = new SharedLife(server, serverConfig);
         this.playerHandler = new PlayerHandler(sharedLife);
         this.serverHandler = new ServerHandler(sharedLife);
     }

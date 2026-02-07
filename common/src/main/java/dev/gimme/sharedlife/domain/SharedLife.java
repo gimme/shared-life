@@ -2,9 +2,7 @@ package dev.gimme.sharedlife.domain;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.logging.LogUtils;
-import dev.gimme.sharedlife.Main;
 import dev.gimme.sharedlife.domain.config.ServerConfig;
-import dev.gimme.sharedlife.domain.plugins.ThirstPlugin;
 import dev.gimme.sharedlife.domain.util.Constants;
 import dev.gimme.sharedlife.domain.util.ExtractingValueOutput;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
@@ -41,28 +39,22 @@ public class SharedLife {
     private static final Logger LOG = LogUtils.getLogger();
 
     private final MinecraftServer server;
+    private final ServerConfig config;
     private final DamageSource damageSource;
     private final Heart heart;
-    private final @Nullable ThirstPlugin thirstPlugin;
 
     private final FoodData foodData = new FoodData();
     private int experienceLevel;
 
     private int previousFoodLevel;
     private float previousSaturation;
-    private int previousThirst;
-    private int previousQuenched;
     private int previousExperienceLevel;
 
-    public SharedLife(@NotNull MinecraftServer server) {
-        this(server, null);
-    }
-
-    public SharedLife(@NotNull MinecraftServer server, @Nullable ThirstPlugin thirstPlugin) {
+    public SharedLife(@NotNull MinecraftServer server, @NotNull ServerConfig config) {
         this.server = server;
+        this.config = config;
         this.damageSource = new DamageSource(server.registryAccess().lookupOrThrow(Registries.DAMAGE_TYPE).getOrThrow(ModDamageTypes.SHARED_LIFE));
         this.heart = new Heart(server);
-        this.thirstPlugin = thirstPlugin;
     }
 
     public class Heart extends FakePlayer {
@@ -123,11 +115,6 @@ public class SharedLife {
     private void applyHunger(ServerPlayer player) {
         player.getFoodData().setFoodLevel(foodData.getFoodLevel());
         player.getFoodData().setSaturation(foodData.getSaturationLevel());
-
-        if (thirstPlugin != null) {
-            thirstPlugin.setThirst(player, thirstPlugin.getThirst(heart));
-            thirstPlugin.setQuenched(player, thirstPlugin.getQuenched(heart));
-        }
     }
 
     /**
@@ -142,11 +129,6 @@ public class SharedLife {
         foodData.addExhaustion(getExhaustionLevel(player.getFoodData()));
         resetExhaustionLevel(player.getFoodData());
 
-        if (thirstPlugin != null) {
-            thirstPlugin.setThirst(heart, thirstPlugin.getThirst(player));
-            thirstPlugin.setQuenched(heart, thirstPlugin.getQuenched(player));
-        }
-
         resetPreviousStats();
         LOG.debug("Initialized shared life from player {}: {}", player.getName().getString(), this);
     }
@@ -154,10 +136,6 @@ public class SharedLife {
     private void resetPreviousStats() {
         previousFoodLevel = foodData.getFoodLevel();
         previousSaturation = foodData.getSaturationLevel();
-        if (thirstPlugin != null) {
-            previousThirst = thirstPlugin.getThirst(heart);
-            previousQuenched = thirstPlugin.getQuenched(heart);
-        }
         previousExperienceLevel = experienceLevel;
     }
 
@@ -180,13 +158,6 @@ public class SharedLife {
             foodData.setSaturation(Math.max(0, foodData.getSaturationLevel() + saturationChange));
             foodData.addExhaustion(exhaustionChange);
             resetExhaustionLevel(player.getFoodData());
-
-            if (thirstPlugin != null) {
-                var thirstChange = thirstPlugin.getThirst(player) - previousThirst;
-                var quenchedChange = thirstPlugin.getQuenched(player) - previousQuenched;
-                thirstPlugin.setThirst(heart, Math.max(0, thirstPlugin.getThirst(heart) + thirstChange));
-                thirstPlugin.setQuenched(heart, Math.max(0, thirstPlugin.getQuenched(heart) + quenchedChange));
-            }
         }
 
         foodData.tick(heart);
@@ -291,7 +262,7 @@ public class SharedLife {
                 .append(Component.literal(" "))
                 .append(Component.translatableWithFallback("message.sharedlife.damage", "damage"));
 
-        if (Main.INSTANCE.getServerConfig().includeDamageSource()) {
+        if (config.includeDamageSource()) {
             message
                     .append(Component.literal(" "))
                     .append(Component.translatableWithFallback("message.sharedlife.from", "from"))
@@ -299,7 +270,7 @@ public class SharedLife {
                     .append(Component.literal(damageSourceName).withStyle(Style.EMPTY.withColor(ChatFormatting.WHITE).withItalic(true)));
         }
 
-        if (Main.INSTANCE.getServerConfig().announceDamage()) {
+        if (config.announceDamage()) {
             toPlayer.sendSystemMessage(message, false);
         }
         LOG.debug(message.getString());
