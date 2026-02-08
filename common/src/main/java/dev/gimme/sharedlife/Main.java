@@ -15,7 +15,6 @@ public class Main {
     public static Main INSTANCE;
 
     public static Main init(MinecraftServer server, Path configDir) {
-        if (INSTANCE != null) throw new IllegalStateException("Main has already been initialized");
         INSTANCE = new Main(server, configDir);
         return INSTANCE;
     }

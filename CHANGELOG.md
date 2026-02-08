@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.21.11-0.1.3] - 2026-02-08
+
+### Fixed
+
+- Fixed crash on recreating singleplayer world
+
 ## [v1.21.11-0.1.2] - 2026-02-07
 
 ### Added
