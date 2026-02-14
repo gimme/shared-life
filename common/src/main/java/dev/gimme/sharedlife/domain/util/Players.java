@@ -19,6 +19,11 @@ public class Players {
         return Main.INSTANCE.getServerConfig().shareHealth();
     }
 
+    public static boolean isSharedDeathEnabled(@NotNull ServerPlayer player) {
+        if (isEthereal(player)) return false;
+        return Main.INSTANCE.getServerConfig().shareHealth() || Main.INSTANCE.getServerConfig().shareDeath();
+    }
+
     public static boolean isSharedHungerEnabled(@NotNull ServerPlayer player) {
         if (isEthereal(player)) return false;
         return Main.INSTANCE.getServerConfig().shareHunger();

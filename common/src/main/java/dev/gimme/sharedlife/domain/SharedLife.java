@@ -232,7 +232,7 @@ public class SharedLife {
      */
     public void killBy(@NotNull ServerPlayer deadPlayer) {
         if (isDead()) return;
-        if (!Players.isSharedHealthEnabled(deadPlayer)) return;
+        if (!Players.isSharedDeathEnabled(deadPlayer)) return;
 
         setHealth(0);
         LOG.debug("{} has caused shared life death.", deadPlayer.getName().getString());

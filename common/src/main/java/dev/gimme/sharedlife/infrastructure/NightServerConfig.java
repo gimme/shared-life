@@ -11,6 +11,10 @@ public class NightServerConfig extends ServerConfig {
             .comment("If health should be shared among players")
             .define("shareHealth", true);
 
+    private static final ConfigValue<Boolean> SHARE_DEATH = SPEC.variable()
+            .comment("If all players should die when one player dies. This is implicitly enabled if shareHealth is enabled.")
+            .define("shareDeath", true);
+
     private static final ConfigValue<Boolean> SHARE_HUNGER = SPEC.variable()
             .comment("If hunger should be shared among players")
             .define("shareHunger", true);
@@ -30,6 +34,11 @@ public class NightServerConfig extends ServerConfig {
     @Override
     public boolean shareHealth() {
         return SHARE_HEALTH.get();
+    }
+
+    @Override
+    public boolean shareDeath() {
+        return SHARE_DEATH.get();
     }
 
     @Override
