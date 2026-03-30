@@ -332,6 +332,6 @@ public class SharedLife {
         var pitch = 0.8f;
 
         player.connection.send(new ClientboundHurtAnimationPacket(player));
-        player.connection.send(new ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(SoundEvents.PLAYER_HURT), SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), volume, pitch, player.level().random.nextLong()));
+        player.connection.send(new ClientboundSoundPacket(BuiltInRegistries.SOUND_EVENT.wrapAsHolder(SoundEvents.PLAYER_HURT), SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), volume, pitch, player.level().getRandom().nextLong()));
     }
 }
