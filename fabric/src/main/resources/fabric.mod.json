@@ -30,9 +30,6 @@
         "java": ">=${java_version}",
         "forgeconfigapiport": ">=${forge_config_api_port_version}"
     },
-    "suggests": {
-        "another-mod": "*"
-    },
     "custom": {
         "mc-publish": {
             "dependencies": [
