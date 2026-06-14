@@ -8,6 +8,7 @@
     "MixinPlayerDamage",
     "MixinPlayerDie",
     "MixinPlayerHeal",
-    "MixinPlayerRespawn"
+    "MixinPlayerRespawn",
+    "MixinPlayerTotem"
   ]
 }

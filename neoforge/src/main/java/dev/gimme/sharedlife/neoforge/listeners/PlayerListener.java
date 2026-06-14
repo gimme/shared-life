@@ -7,6 +7,7 @@ import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingHealEvent;
+import net.neoforged.neoforge.event.entity.living.LivingUseTotemEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 public class PlayerListener {
@@ -34,6 +35,13 @@ public class PlayerListener {
         if (event.isCanceled()) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         Main.INSTANCE.getPlayerHandler().onPlayerHeal(player, event.getAmount());
+    }
+
+    @SubscribeEvent
+    public void onUseTotem(LivingUseTotemEvent event) {
+        if (event.isCanceled()) return;
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        Main.INSTANCE.getPlayerHandler().onPlayerTotem(player);
     }
 
     @SubscribeEvent

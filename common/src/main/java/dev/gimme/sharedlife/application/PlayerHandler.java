@@ -31,6 +31,10 @@ public class PlayerHandler {
         sharedLife.healByPlayer(player, amount);
     }
 
+    public void onPlayerTotem(@NotNull ServerPlayer player) {
+        sharedLife.protectByTotem(player);
+    }
+
     public void onPlayerDeath(@NotNull ServerPlayer player) {
         sharedLife.killBy(player);
     }

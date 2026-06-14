@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed duplicate event handling after loading multiple worlds in a single game session
+- Fixed totems of undying not reviving the shared health bar when their holder takes a fatal hit
 
 ## [v26.1-0.1.4] - 2026-03-30
 

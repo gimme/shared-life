@@ -228,6 +228,20 @@ public class SharedLife {
     }
 
     /**
+     * Restores the shared life after the given player is saved from death by a totem of undying.
+     *
+     * By design, this only fires for the player who personally takes the fatal blow while holding a
+     * totem.
+     */
+    public void protectByTotem(@NotNull ServerPlayer player) {
+        if (!Players.isSharedHealthEnabled(player)) return;
+        if (getHealth() < 1) {
+            setHealth(1);
+        }
+        LOG.debug("{} used a totem of undying, reviving the shared life.", player.getName().getString());
+    }
+
+    /**
      * Ends the shared life due to the given player's death.
      */
     public void killBy(@NotNull ServerPlayer deadPlayer) {
