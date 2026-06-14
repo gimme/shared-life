@@ -11,9 +11,12 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 
-    // Forge Config API Port provides NeoForge's config system on Fabric. It is a required runtime
-    // dependency that needs to be installed separately.
-    implementation("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forge_config_api_port_version}")
+    // Forge Config API Port provides NeoForge's config system on Fabric.
+    // modImplementation (not implementation) so Loom remaps it; exclude its transitive Fabric API
+    // since we already declare a remapped one above.
+    modImplementation("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forge_config_api_port_version}") {
+        exclude group: "net.fabricmc.fabric-api"
+    }
 }
 
 loom {
