@@ -15,12 +15,7 @@ public class FabricMod implements ModInitializer {
     public void onInitialize() {
         ConfigRegistry.INSTANCE.register(Constants.MOD_ID, ModConfig.Type.COMMON, FcapServerConfig.SPEC, FcapServerConfig.FILE_NAME);
 
-        // Register server starting event
-        ServerLifecycleEvents.SERVER_STARTED.register(mainServer -> {
-            var main = Main.init(mainServer);
-
-            // Register server tick event
-            ServerTickEvents.END_SERVER_TICK.register(tickServer -> main.getServerHandler().onServerTick());
-        });
+        ServerLifecycleEvents.SERVER_STARTED.register(Main::init);
+        ServerTickEvents.END_SERVER_TICK.register(server -> Main.INSTANCE.getServerHandler().onServerTick());
     }
 }

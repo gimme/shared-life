@@ -1,6 +1,6 @@
 package dev.gimme.sharedlife.neoforge.listeners;
 
-import dev.gimme.sharedlife.application.PlayerHandler;
+import dev.gimme.sharedlife.Main;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
@@ -11,41 +11,35 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 public class PlayerListener {
 
-    private final PlayerHandler playerHandler;
-
-    public PlayerListener(PlayerHandler playerHandler) {
-        this.playerHandler = playerHandler;
-    }
-
     @SubscribeEvent
     public void onJoinLevel(EntityJoinLevelEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerJoinLevel(player);
+        Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(player);
     }
 
     @SubscribeEvent
     public void onChangeGameMode(PlayerEvent.PlayerChangeGameModeEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerChangeGameMode(player, event.getNewGameMode());
+        Main.INSTANCE.getPlayerHandler().onPlayerChangeGameMode(player, event.getNewGameMode());
     }
 
     @SubscribeEvent
     public void onDamage(LivingDamageEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerDamage(player, event.getSource(), event.getNewDamage());
+        Main.INSTANCE.getPlayerHandler().onPlayerDamage(player, event.getSource(), event.getNewDamage());
     }
 
     @SubscribeEvent
     public void onHeal(LivingHealEvent event) {
         if (event.isCanceled()) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerHeal(player, event.getAmount());
+        Main.INSTANCE.getPlayerHandler().onPlayerHeal(player, event.getAmount());
     }
 
     @SubscribeEvent
     public void onDeath(LivingDeathEvent event) {
         if (event.isCanceled()) return;
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        playerHandler.onPlayerDeath(player);
+        Main.INSTANCE.getPlayerHandler().onPlayerDeath(player);
     }
 }
