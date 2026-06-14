@@ -23,9 +23,18 @@ repositories {
         }
         filter { includeGroupAndSubgroups('org.spongepowered') }
     }
-    maven {
-        name = "NeoForge"
-        url = 'https://maven.neoforged.net/releases'
+    exclusiveContent {
+        forRepositories(
+                maven {
+                    name = 'ParchmentMC'
+                    url = 'https://maven.parchmentmc.org/'
+                },
+                maven {
+                    name = "NeoForge"
+                    url = 'https://maven.neoforged.net/releases'
+                }
+        )
+        filter { includeGroup('org.parchmentmc.data') }
     }
     maven {
         name = "Fuzs Mod Resources"
