@@ -4,18 +4,15 @@ import dev.gimme.sharedlife.application.PlayerHandler;
 import dev.gimme.sharedlife.application.ServerHandler;
 import dev.gimme.sharedlife.domain.SharedLife;
 import dev.gimme.sharedlife.domain.config.ServerConfig;
-import dev.gimme.sharedlife.domain.util.Constants;
-import dev.gimme.sharedlife.infrastructure.NightServerConfig;
+import dev.gimme.sharedlife.infrastructure.FcapServerConfig;
 import net.minecraft.server.MinecraftServer;
-
-import java.nio.file.Path;
 
 public class Main {
 
     public static Main INSTANCE;
 
-    public static Main init(MinecraftServer server, Path configDir) {
-        INSTANCE = new Main(server, configDir);
+    public static Main init(MinecraftServer server) {
+        INSTANCE = new Main(server);
         return INSTANCE;
     }
 
@@ -23,9 +20,8 @@ public class Main {
     private final PlayerHandler playerHandler;
     private final ServerHandler serverHandler;
 
-    private Main(MinecraftServer server, Path configDir) {
-        NightServerConfig.SPEC.init(configDir, Constants.MOD_ID + "-server.toml");
-        this.serverConfig = new NightServerConfig();
+    private Main(MinecraftServer server) {
+        this.serverConfig = new FcapServerConfig();
 
         SharedLife sharedLife = new SharedLife(server, serverConfig);
         this.playerHandler = new PlayerHandler(sharedLife);
