@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- [Fabric] Now requires the Forge Config API Port mod
+
+### Fixed
+
+- Fixed duplicate event handling after loading multiple worlds in a single game session
+
 ## [v26.1-0.1.4] - 2026-03-30
 
 ### Added
