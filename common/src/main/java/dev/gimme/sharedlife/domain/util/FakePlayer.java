@@ -2,8 +2,11 @@ package dev.gimme.sharedlife.domain.util;
 
 import com.mojang.authlib.GameProfile;
 import java.util.OptionalInt;
+import java.util.Set;
+import net.minecraft.network.Connection;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.PacketListener;
+import net.minecraft.network.PacketSendListener;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -33,6 +36,7 @@ import net.minecraft.network.protocol.game.ServerboundLockDifficultyPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundMoveVehiclePacket;
 import net.minecraft.network.protocol.game.ServerboundPaddleBoatPacket;
+import net.minecraft.network.protocol.game.ServerboundPickItemPacket;
 import net.minecraft.network.protocol.game.ServerboundPlaceRecipePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerAbilitiesPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
@@ -62,8 +66,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.stats.Stat;
+import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.RelativeMovement;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -79,10 +87,15 @@ public class FakePlayer extends ServerPlayer {
     }
 
     @Override
-    public void sendSystemMessage(Component chatComponent, boolean actionBar) {}
+    public void displayClientMessage(Component chatComponent, boolean actionBar) {}
 
     @Override
     public void awardStat(Stat<?> stat, int amount) {}
+
+    @Override
+    public boolean isInvulnerableTo(DamageSource source) {
+        return true;
+    }
 
     @Override
     public boolean canHarmPlayer(Player player) {
@@ -103,8 +116,16 @@ public class FakePlayer extends ServerPlayer {
         return OptionalInt.empty();
     }
 
+    @Override
+    public void openHorseInventory(AbstractHorse horse, Container container) {}
+
+    @Override
+    public boolean startRiding(Entity entity, boolean force) {
+        return false;
+    }
+
     private static class FakePlayerNetHandler extends ServerGamePacketListenerImpl {
-        private static final net.minecraft.network.Connection DUMMY_CONNECTION = new FakeConnection();
+        private static final Connection DUMMY_CONNECTION = new FakeConnection();
 
         public FakePlayerNetHandler(MinecraftServer server, ServerPlayer player) {
             super(server, DUMMY_CONNECTION, player, CommonListenerCookie.createInitial(player.getGameProfile(), false));
@@ -145,6 +166,9 @@ public class FakePlayer extends ServerPlayer {
 
         @Override
         public void handleSetCommandMinecart(ServerboundSetCommandMinecartPacket packet) {}
+
+        @Override
+        public void handlePickItem(ServerboundPickItemPacket packet) {}
 
         @Override
         public void handleRenameItem(ServerboundRenameItemPacket packet) {}
@@ -204,6 +228,9 @@ public class FakePlayer extends ServerPlayer {
         public void send(Packet<?> packet) {}
 
         @Override
+        public void send(Packet<?> packet, @Nullable PacketSendListener sendListener) {}
+
+        @Override
         public void handleSetCarriedItem(ServerboundSetCarriedItemPacket packet) {}
 
         @Override
@@ -258,6 +285,9 @@ public class FakePlayer extends ServerPlayer {
         public void handleLockDifficulty(ServerboundLockDifficultyPacket packet) {}
 
         @Override
+        public void teleport(double x, double y, double z, float yaw, float pitch, Set<RelativeMovement> relativeSet) {}
+
+        @Override
         public void ackBlockChangesUpTo(int sequence) {}
 
         @Override
@@ -265,6 +295,9 @@ public class FakePlayer extends ServerPlayer {
 
         @Override
         public void handleChatAck(ServerboundChatAckPacket packet) {}
+
+        @Override
+        public void addPendingMessage(PlayerChatMessage message) {}
 
         @Override
         public void sendPlayerChatMessage(PlayerChatMessage message, ChatType.Bound boundChatType) {}
@@ -276,7 +309,7 @@ public class FakePlayer extends ServerPlayer {
         public void handleChatSessionUpdate(ServerboundChatSessionUpdatePacket packet) {}
     }
 
-    private static final class FakeConnection extends net.minecraft.network.Connection {
+    private static final class FakeConnection extends Connection {
         public FakeConnection() {
             super(PacketFlow.SERVERBOUND);
         }
