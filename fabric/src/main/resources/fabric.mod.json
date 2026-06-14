@@ -32,6 +32,13 @@
     },
     "suggests": {
         "another-mod": "*"
+    },
+    "custom": {
+        "mc-publish": {
+            "dependencies": [
+                "forgeconfigapiport(required){modrinth:forge-config-api-port}{curseforge:forge-config-api-port}"
+            ]
+        }
     }
 }
   
