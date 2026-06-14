@@ -8,12 +8,11 @@
         "${mod_author}"
     ],
     "contact": {
-        "homepage": "https://fabricmc.net/",
-        "sources": "https://github.com/FabricMC/fabric-example-mod"
+        "sources": "https://github.com/gimme/shared-life"
     },
     "license": "${license}",
     "icon": "${mod_id}.png",
-    "environment": "*",
+    "environment": "server",
     "entrypoints": {
         "main": [
             "dev.gimme.sharedlife.fabric.FabricMod"
