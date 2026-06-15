@@ -8,10 +8,11 @@
         "${mod_author}"
     ],
     "contact": {
+        "homepage": "https://modrinth.com/mod/gimme-shared-life",
+        "issues": "https://github.com/gimme/shared-life/issues",
         "sources": "https://github.com/gimme/shared-life"
     },
     "license": "${license}",
-    "icon": "${mod_id}.png",
     "environment": "server",
     "entrypoints": {
         "main": [
@@ -37,4 +38,3 @@
         }
     }
 }
-  
