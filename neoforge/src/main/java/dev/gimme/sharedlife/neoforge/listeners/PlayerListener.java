@@ -27,7 +27,7 @@ public class PlayerListener {
     @SubscribeEvent
     public void onDamage(LivingDamageEvent.Post event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        Main.INSTANCE.getPlayerHandler().onPlayerDamage(player, event.getSource(), event.getNewDamage());
+        Main.INSTANCE.getPlayerHandler().onPlayerDamage(player, event.getSource(), event.getHealthDamage());
     }
 
     @SubscribeEvent
