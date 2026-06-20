@@ -14,9 +14,6 @@ public class FcapServerConfig extends ServerConfig {
     public static final String FILE_NAME = Constants.MOD_ID + "-server.toml";
     public static final ModConfigSpec SPEC;
 
-    // Package-private (not private) so the gametest-only ConfigTestSupport, which lives in this same
-    // package in the gametest source set, can reach these handles to override values per test.
-    // Production code still sees only the read-only getters below.
     static final BooleanValue SHARE_HEALTH;
     static final BooleanValue SHARE_DEATH;
     static final BooleanValue SHARE_HUNGER;
