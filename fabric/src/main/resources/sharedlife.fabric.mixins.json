@@ -6,10 +6,8 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "MixinPlayerChangeGameMode",
-    "MixinPlayerDamage",
     "MixinPlayerDie",
     "MixinPlayerHeal",
-    "MixinPlayerRespawn",
-    "MixinPlayerTotem"
+    "MixinPlayerRespawn"
   ]
 }
