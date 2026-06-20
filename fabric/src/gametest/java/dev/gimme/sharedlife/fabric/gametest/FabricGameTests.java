@@ -21,6 +21,11 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void healthNotSharedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.healthNotSharedWhenDisabled(helper);
+    }
+
+    @GameTest
     public void damageReducesSharedHealth(GameTestHelper helper) {
         SharedLifeGameTests.damageReducesSharedHealth(helper);
     }
@@ -36,6 +41,21 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void hungerNotSharedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.hungerNotSharedWhenDisabled(helper);
+    }
+
+    @GameTest
+    public void experienceSharedWhenEnabled(GameTestHelper helper) {
+        SharedLifeGameTests.experienceSharedWhenEnabled(helper);
+    }
+
+    @GameTest
+    public void experienceNotSharedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.experienceNotSharedWhenDisabled(helper);
+    }
+
+    @GameTest
     public void totemRevivesDeadSharedLife(GameTestHelper helper) {
         SharedLifeGameTests.totemRevivesDeadSharedLife(helper);
     }
@@ -48,10 +68,5 @@ public final class FabricGameTests {
     @GameTest
     public void etherealPlayersDoNotJoin(GameTestHelper helper) {
         SharedLifeGameTests.etherealPlayersDoNotJoin(helper);
-    }
-
-    @GameTest
-    public void experienceNotSharedByDefault(GameTestHelper helper) {
-        SharedLifeGameTests.experienceNotSharedByDefault(helper);
     }
 }
