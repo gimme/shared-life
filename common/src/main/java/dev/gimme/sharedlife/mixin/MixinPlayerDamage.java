@@ -1,4 +1,4 @@
-package dev.gimme.sharedlife.fabric.mixin;
+package dev.gimme.sharedlife.mixin;
 
 import dev.gimme.sharedlife.Main;
 import net.minecraft.server.level.ServerLevel;
