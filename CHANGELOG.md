@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.21.1-0.1.6] - 2026-06-20
+
 ### Fixed
 
 - [NeoForge] Fixed totems of undying still letting the shared health bar die when their holder takes a fatal hit
