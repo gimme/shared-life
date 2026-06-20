@@ -17,7 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -144,11 +143,10 @@ public final class SharedLifeGameTests {
     /**
      * One player's death ends the shared life, and the next tick kills everyone still alive.
      *
-     * <p>The death is reported through the same {@code onPlayerDeath} entry point the loader's death hook
-     * uses (a freshly placed {@link FakePlayer} no-ops {@code die()}, so we can't route a fatal blow
-     * through it). The cascade itself — the behaviour under test — runs for real: {@code syncHealth} sees
-     * the dead pool and applies lethal {@code shared_life} damage to every live player via
-     * {@link ServerPlayer#hurtServer}.
+     * <p>A real fatal blow on one player routes through {@link ServerPlayer#hurtServer} → {@code die()} →
+     * the loader's death hook (Fabric's {@code MixinPlayerDie} / NeoForge's {@code LivingDeathEvent}), which
+     * ends the shared life. The cascade then runs: {@code syncHealth} sees the dead pool and applies lethal
+     * {@code shared_life} damage to every other live player, again via {@link ServerPlayer#hurtServer}.
      */
     public static void deathCascadesToAllPlayers(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -161,12 +159,15 @@ public final class SharedLifeGameTests {
                 seedPoolFrom(a);
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
 
-                Main.INSTANCE.getPlayerHandler().onPlayerDeath(a); // shared life dies
+                // A real fatal blow on A goes through hurtServer -> die() -> the loader's death hook,
+                // which ends the shared life.
+                a.invulnerableTime = 0;
+                a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 1000f);
 
                 Main.INSTANCE.getServerHandler().onServerTick();    // cascade: kills every live player
 
                 helper.assertTrue(a.isDeadOrDying(),
-                        "A should have died with the shared life, but had health " + a.getHealth());
+                        "A should have died from the fatal blow, but had health " + a.getHealth());
                 helper.assertTrue(b.isDeadOrDying(),
                         "B should have been killed by the death cascade, but had health " + b.getHealth());
             } finally {
@@ -494,20 +495,24 @@ public final class SharedLifeGameTests {
      * A real, survival player registered in {@code server.getPlayerList()} — so the per-tick sync loop,
      * which iterates that list, actually sees it.
      *
-     * <p>Registration mirrors {@code GameTestHelper.makeMockServerPlayerInLevel()} (a fresh
-     * {@link Connection} fed through an {@link EmbeddedChannel}, then {@code placeNewPlayer}), but uses the
-     * project's {@link FakePlayer} rather than the helper's own mock: that mock hardcodes
-     * {@code gameMode()} to {@code CREATIVE}, which {@code setGameMode} can't override, leaving the player
-     * permanently ethereal and immune to {@code hurtServer}. Placed players start in the game-test
-     * server's creative mode, so we force survival and clear the ability flags creative left set.
+     * <p>The player comes straight from {@link GameTestHelper#makeMockServerPlayer(GameType)}, which pins
+     * {@code gameMode()} to {@link GameType#SURVIVAL} (so it is never ethereal) and applies survival
+     * abilities — clearing the {@code invulnerable} flag the game-test server's default creative mode leaves
+     * set, which would otherwise make {@code hurtServer} a no-op. Unlike a {@link FakePlayer}, it has no
+     * neutered {@code die()}/{@code tick()}: death and per-tick processing run for real, so a fatal blow
+     * actually fires the loader's death hook ({@code ServerPlayer.die} → Fabric's {@code MixinPlayerDie} /
+     * NeoForge's {@code LivingDeathEvent}) — exactly the wiring these end-to-end tests exist to drive. (The
+     * helper returns {@link net.minecraft.world.entity.player.Player}; the value is a {@link ServerPlayer}.)
+     *
+     * <p>Registration is the "in level" half of the deprecated {@code makeMockServerPlayerInLevel()}: a fresh
+     * {@link Connection} fed through an {@link EmbeddedChannel}, then {@code placeNewPlayer}.
      */
     private static ServerPlayer spawnRealPlayer(GameTestHelper helper, float health) {
-        ServerLevel level = helper.getLevel();
-        MinecraftServer server = level.getServer();
+        MinecraftServer server = helper.getLevel().getServer();
 
-        GameProfile profile = new GameProfile(UUID.randomUUID(), "e2e-mock");
-        CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
-        ServerPlayer player = new FakePlayer(level, profile);
+        ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
+
+        CommonListenerCookie cookie = CommonListenerCookie.createInitial(player.getGameProfile(), false);
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
         new EmbeddedChannel(connection); // wires connection.channel so placeNewPlayer can send packets
         server.getPlayerList().placeNewPlayer(connection, player, cookie);
@@ -517,12 +522,6 @@ public final class SharedLifeGameTests {
         // so simulate the "player loaded" packet to lift that spawn invulnerability.
         player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
 
-        player.setGameMode(GameType.SURVIVAL);
-        Abilities abilities = player.getAbilities();
-        abilities.invulnerable = false;
-        abilities.instabuild = false;
-        abilities.flying = false;
-        player.onUpdateAbilities();
         player.setHealth(health);
         player.invulnerableTime = 0;
         return player;
