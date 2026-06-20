@@ -14,4 +14,44 @@ public final class FabricGameTests {
     public void smoke(GameTestHelper helper) {
         SharedLifeGameTests.smoke(helper);
     }
+
+    @GameTest
+    public void healthSyncsToJoiningPlayer(GameTestHelper helper) {
+        SharedLifeGameTests.healthSyncsToJoiningPlayer(helper);
+    }
+
+    @GameTest
+    public void damageReducesSharedHealth(GameTestHelper helper) {
+        SharedLifeGameTests.damageReducesSharedHealth(helper);
+    }
+
+    @GameTest
+    public void healingRaisesSharedHealth(GameTestHelper helper) {
+        SharedLifeGameTests.healingRaisesSharedHealth(helper);
+    }
+
+    @GameTest
+    public void hungerSyncsToJoiningPlayer(GameTestHelper helper) {
+        SharedLifeGameTests.hungerSyncsToJoiningPlayer(helper);
+    }
+
+    @GameTest
+    public void totemRevivesDeadSharedLife(GameTestHelper helper) {
+        SharedLifeGameTests.totemRevivesDeadSharedLife(helper);
+    }
+
+    @GameTest
+    public void deathReseedsFromNextJoiner(GameTestHelper helper) {
+        SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
+    }
+
+    @GameTest
+    public void etherealPlayersDoNotJoin(GameTestHelper helper) {
+        SharedLifeGameTests.etherealPlayersDoNotJoin(helper);
+    }
+
+    @GameTest
+    public void experienceNotSharedByDefault(GameTestHelper helper) {
+        SharedLifeGameTests.experienceNotSharedByDefault(helper);
+    }
 }
