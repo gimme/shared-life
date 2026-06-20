@@ -26,26 +26,36 @@ import net.neoforged.neoforge.registries.RegisterEvent;
 @EventBusSubscriber(modid = Constants.MOD_ID)
 public final class NeoForgeGameTests {
 
-    private record Test(String name, int maxTicks, boolean required, Consumer<GameTestHelper> body) {
+    private record Test(String name, int maxTicks, boolean isolated, boolean required, Consumer<GameTestHelper> body) {
         // Required by default; pass required=false for known-red TDD specs that shouldn't fail the suite.
+        // Not isolated by default; an isolated test gets its own environment (= its own sequential batch).
         Test(String name, int maxTicks, Consumer<GameTestHelper> body) {
-            this(name, maxTicks, true, body);
+            this(name, maxTicks, false, true, body);
+        }
+
+        Test(String name, int maxTicks, boolean isolated, Consumer<GameTestHelper> body) {
+            this(name, maxTicks, isolated, true, body);
         }
     }
 
     // Test names become resource-location paths, so they must be snake_case ([a-z0-9/._-] only).
     private static final List<Test> TESTS = List.of(
-            new Test("health_syncs_to_joining_player", 100, SharedLifeGameTests::healthSyncsToJoiningPlayer),
+            new Test("damage_syncs_across_real_players", 100, SharedLifeGameTests::damageSyncsAcrossRealPlayers),
+            new Test("healing_syncs_across_real_players", 100, SharedLifeGameTests::healingSyncsAcrossRealPlayers),
+            new Test("death_cascades_to_all_players", 100, SharedLifeGameTests::deathCascadesToAllPlayers),
+            new Test("totem_revives_shared_life", 100, SharedLifeGameTests::totemRevivesSharedLife),
+            new Test("hunger_syncs_across_real_players", 100, SharedLifeGameTests::hungerSyncsAcrossRealPlayers),
+            new Test("starvation_hurts_all_players", 100, SharedLifeGameTests::starvationHurtsAllPlayers),
+            new Test("experience_syncs_across_real_players", 100, SharedLifeGameTests::experienceSyncsAcrossRealPlayers),
+            // The one real-tick test: isolated so it gets its own environment (= own sequential batch) and
+            // never shares a batch with a test that re-seeds the global pool while its players sit in the
+            // shared list across a tick boundary.
+            new Test("server_tick_hook_is_wired", 100, true, SharedLifeGameTests::serverTickHookIsWired),
             new Test("health_not_shared_when_disabled", 100, SharedLifeGameTests::healthNotSharedWhenDisabled),
-            new Test("damage_reduces_shared_health", 100, SharedLifeGameTests::damageReducesSharedHealth),
-            new Test("healing_raises_shared_health", 100, SharedLifeGameTests::healingRaisesSharedHealth),
-            new Test("hunger_syncs_to_joining_player", 100, SharedLifeGameTests::hungerSyncsToJoiningPlayer),
             new Test("hunger_not_shared_when_disabled", 100, SharedLifeGameTests::hungerNotSharedWhenDisabled),
-            new Test("experience_shared_when_enabled", 100, SharedLifeGameTests::experienceSharedWhenEnabled),
             new Test("experience_not_shared_when_disabled", 100, SharedLifeGameTests::experienceNotSharedWhenDisabled),
-            new Test("totem_revives_dead_shared_life", 100, SharedLifeGameTests::totemRevivesDeadSharedLife),
-            new Test("death_reseeds_from_next_joiner", 100, SharedLifeGameTests::deathReseedsFromNextJoiner),
-            new Test("ethereal_players_do_not_join", 100, SharedLifeGameTests::etherealPlayersDoNotJoin));
+            new Test("ethereal_players_excluded", 100, SharedLifeGameTests::etherealPlayersExcluded),
+            new Test("death_reseeds_from_next_joiner", 100, SharedLifeGameTests::deathReseedsFromNextJoiner));
 
     private NeoForgeGameTests() {
     }
@@ -58,8 +68,15 @@ public final class NeoForgeGameTests {
 
     @SubscribeEvent
     static void registerTests(RegisterGameTestsEvent event) {
-        Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(id("default"));
+        // Hand-driven tests assert synchronously within a single tick, so they share one environment (one
+        // batch) and may run concurrently. An isolated test runs on real ticks, with its players living in
+        // the shared player list across a tick boundary, so it gets its own environment — the framework runs
+        // each environment's batch strictly sequentially — to keep it away from any test re-seeding the
+        // global pool mid-flight.
+        Holder<TestEnvironmentDefinition<?>> shared = event.registerEnvironment(id("default"));
         TESTS.forEach(test -> {
+            Holder<TestEnvironmentDefinition<?>> environment =
+                    test.isolated() ? event.registerEnvironment(id("env/" + test.name())) : shared;
             ResourceKey<Consumer<GameTestHelper>> function =
                     ResourceKey.create(Registries.TEST_FUNCTION, id(test.name()));
             TestData<Holder<TestEnvironmentDefinition<?>>> data =

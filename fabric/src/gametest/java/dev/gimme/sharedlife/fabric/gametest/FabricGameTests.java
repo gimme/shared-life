@@ -7,12 +7,55 @@ import net.minecraft.gametest.framework.GameTestHelper;
 /**
  * Fabric test wiring, scanned via the {@code fabric-gametest} entrypoint. One {@link GameTest}
  * delegate per shared test; the structure defaults to Fabric API's built-in empty 8x8x8.
+ *
+ * <p>All tests but one tick by hand and assert synchronously, so they coexist fine on the default
+ * environment. The exception is {@link SharedLifeGameTests#serverTickHookIsWired}, which lets a real
+ * server tick fire the loader's hook: it's the only test whose players live in the shared player list
+ * across a tick boundary, so it gets its own single-use environment
+ * ({@code sharedlife:env/server_tick_hook_is_wired}, defined under {@code data/sharedlife/test_environment})
+ * to force it into a sequential batch of its own, away from any test that re-seeds the global pool.
  */
 public final class FabricGameTests {
 
     @GameTest
-    public void healthSyncsToJoiningPlayer(GameTestHelper helper) {
-        SharedLifeGameTests.healthSyncsToJoiningPlayer(helper);
+    public void damageSyncsAcrossRealPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.damageSyncsAcrossRealPlayers(helper);
+    }
+
+    @GameTest
+    public void healingSyncsAcrossRealPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.healingSyncsAcrossRealPlayers(helper);
+    }
+
+    @GameTest
+    public void deathCascadesToAllPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.deathCascadesToAllPlayers(helper);
+    }
+
+    @GameTest
+    public void totemRevivesSharedLife(GameTestHelper helper) {
+        SharedLifeGameTests.totemRevivesSharedLife(helper);
+    }
+
+    @GameTest
+    public void hungerSyncsAcrossRealPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.hungerSyncsAcrossRealPlayers(helper);
+    }
+
+    @GameTest
+    public void starvationHurtsAllPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.starvationHurtsAllPlayers(helper);
+    }
+
+    @GameTest
+    public void experienceSyncsAcrossRealPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
+    }
+
+    // The one real-tick test: its own environment keeps it in a sequential batch of its own.
+    @GameTest(environment = "sharedlife:env/server_tick_hook_is_wired")
+    public void serverTickHookIsWired(GameTestHelper helper) {
+        SharedLifeGameTests.serverTickHookIsWired(helper);
     }
 
     @GameTest
@@ -21,28 +64,8 @@ public final class FabricGameTests {
     }
 
     @GameTest
-    public void damageReducesSharedHealth(GameTestHelper helper) {
-        SharedLifeGameTests.damageReducesSharedHealth(helper);
-    }
-
-    @GameTest
-    public void healingRaisesSharedHealth(GameTestHelper helper) {
-        SharedLifeGameTests.healingRaisesSharedHealth(helper);
-    }
-
-    @GameTest
-    public void hungerSyncsToJoiningPlayer(GameTestHelper helper) {
-        SharedLifeGameTests.hungerSyncsToJoiningPlayer(helper);
-    }
-
-    @GameTest
     public void hungerNotSharedWhenDisabled(GameTestHelper helper) {
         SharedLifeGameTests.hungerNotSharedWhenDisabled(helper);
-    }
-
-    @GameTest
-    public void experienceSharedWhenEnabled(GameTestHelper helper) {
-        SharedLifeGameTests.experienceSharedWhenEnabled(helper);
     }
 
     @GameTest
@@ -51,17 +74,12 @@ public final class FabricGameTests {
     }
 
     @GameTest
-    public void totemRevivesDeadSharedLife(GameTestHelper helper) {
-        SharedLifeGameTests.totemRevivesDeadSharedLife(helper);
+    public void etherealPlayersExcluded(GameTestHelper helper) {
+        SharedLifeGameTests.etherealPlayersExcluded(helper);
     }
 
     @GameTest
     public void deathReseedsFromNextJoiner(GameTestHelper helper) {
         SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
-    }
-
-    @GameTest
-    public void etherealPlayersDoNotJoin(GameTestHelper helper) {
-        SharedLifeGameTests.etherealPlayersDoNotJoin(helper);
     }
 }
