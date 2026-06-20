@@ -23,6 +23,9 @@ dependencies {
     compileOnly("fuzs.forgeconfigapiport:forgeconfigapiport-common-neoforgeapi:${forge_config_api_port_version}")
 }
 
+// Exposes this module's main + gametest sources/classes so each loader can recompile the shared code
+// against its own Minecraft (and IDEs can resolve the shared gametest types). The gametest source set
+// itself is defined by the multiloader-common convention plugin.
 configurations {
     commonJava {
         canBeResolved = false
@@ -32,9 +35,24 @@ configurations {
         canBeResolved = false
         canBeConsumed = true
     }
+    // Exposes the shared gametest sources for each loader to compile into its own gametest set.
+    commonGametestJava {
+        canBeResolved = false
+        canBeConsumed = true
+    }
+    // Exposes the compiled gametest classes so each loader's gametest set can depend on them and
+    // IDEs resolve the shared test types (the build still recompiles the sources via commonGametestJava).
+    commonGametestClasses {
+        canBeResolved = false
+        canBeConsumed = true
+    }
 }
 
 artifacts {
     commonJava sourceSets.main.java.sourceDirectories.singleFile
     commonResources sourceSets.main.resources.sourceDirectories.singleFile
+    commonGametestJava sourceSets.gametest.java.sourceDirectories.singleFile
+    commonGametestClasses(sourceSets.gametest.output.classesDirs.singleFile) {
+        builtBy sourceSets.gametest.output
+    }
 }

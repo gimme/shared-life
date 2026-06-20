@@ -31,13 +31,21 @@ neoForge {
         server {
             server()
         }
+        gameTestServer {
+            // Headless test server; non-zero exit on failure. Run: ./gradlew :neoforge:runGameTestServer
+            type = 'gameTestServer'
+        }
     }
 
     mods {
         "${mod_id}" {
             sourceSet sourceSets.main
+            // Dev-only: lets NeoForge scan the gametest set (@GameTestHolder) in runs; never shipped.
+            sourceSet sourceSets.gametest
         }
     }
 }
+
+tasks.named('check') { dependsOn 'runGameTestServer' }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }

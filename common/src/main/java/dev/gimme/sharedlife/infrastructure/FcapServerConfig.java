@@ -14,12 +14,15 @@ public class FcapServerConfig extends ServerConfig {
     public static final String FILE_NAME = Constants.MOD_ID + "-server.toml";
     public static final ModConfigSpec SPEC;
 
-    private static final BooleanValue SHARE_HEALTH;
-    private static final BooleanValue SHARE_DEATH;
-    private static final BooleanValue SHARE_HUNGER;
-    private static final BooleanValue SHARE_EXPERIENCE;
-    private static final BooleanValue ANNOUNCE_DAMAGE;
-    private static final BooleanValue INCLUDE_DAMAGE_SOURCE;
+    // Package-private (not private) so the gametest source set's ConfigTestSupport, which lives in
+    // this same package, can override these in tests. Production code still reads them only via the
+    // getters below.
+    static final BooleanValue SHARE_HEALTH;
+    static final BooleanValue SHARE_DEATH;
+    static final BooleanValue SHARE_HUNGER;
+    static final BooleanValue SHARE_EXPERIENCE;
+    static final BooleanValue ANNOUNCE_DAMAGE;
+    static final BooleanValue INCLUDE_DAMAGE_SOURCE;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();

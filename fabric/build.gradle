@@ -17,6 +17,10 @@ dependencies {
     modImplementation("fuzs.forgeconfigapiport:forgeconfigapiport-fabric:${forge_config_api_port_version}") {
         exclude group: "net.fabricmc.fabric-api"
     }
+
+    // Dev-only Fabric game test API. It is not bundled in the main fabric-api jar, so request the
+    // submodule version that matches our fabric-api release explicitly.
+    modImplementation fabricApi.module("fabric-gametest-api-v1", fabric_version)
 }
 
 loom {
@@ -26,6 +30,15 @@ loom {
     }
     mixin {
         defaultRefmapName.set("${mod_id}.refmap.json")
+    }
+    // Loom groups each source set as its own dev-classpath mod; the gametest mod stays out of the jar.
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+        "${mod_id}_gametest" {
+            sourceSet sourceSets.gametest
+        }
     }
     runs {
         client {
@@ -40,5 +53,17 @@ loom {
             ideConfigGenerated(true)
             runDir('runs/server')
         }
+        gametest {
+            server()
+            source sourceSets.gametest
+            setConfigName('Fabric Game Test')
+            ideConfigGenerated(true)
+            runDir('runs/gametest')
+            // Fabric API's headless runner + JUnit report. Run: ./gradlew :fabric:runGametest
+            vmArg('-Dfabric-api.gametest')
+            vmArg("-Dfabric-api.gametest.report-file=${layout.buildDirectory.file('junit.xml').get().asFile}")
+        }
     }
 }
+
+tasks.named('check') { dependsOn 'runGametest' }

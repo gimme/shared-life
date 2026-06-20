@@ -1,0 +1,17 @@
+{
+    "schemaVersion": 1,
+    "id": "sharedlife_gametest",
+    "version": "1.0.0",
+    "name": "Shared Life Game Tests",
+    "description": "Game tests for Shared Life. Dev-only; not shipped in the release jar.",
+    "environment": "server",
+    "entrypoints": {
+        "fabric-gametest": [
+            "dev.gimme.sharedlife.fabric.gametest.FabricGameTests"
+        ]
+    },
+    "depends": {
+        "sharedlife": "*",
+        "fabric-gametest-api-v1": "*"
+    }
+}
