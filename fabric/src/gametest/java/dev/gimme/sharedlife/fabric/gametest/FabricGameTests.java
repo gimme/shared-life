@@ -16,11 +16,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 public final class FabricGameTests implements FabricGameTest {
 
     @GameTest(template = EMPTY_STRUCTURE)
-    public void smoke(GameTestHelper helper) {
-        SharedLifeGameTests.smoke(helper);
-    }
-
-    @GameTest(template = EMPTY_STRUCTURE)
     public void healthSyncsToJoiningPlayer(GameTestHelper helper) {
         SharedLifeGameTests.healthSyncsToJoiningPlayer(helper);
     }

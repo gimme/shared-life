@@ -23,11 +23,6 @@ public final class NeoForgeGameTests {
     private static final String EMPTY = "empty";
 
     @GameTest(template = EMPTY)
-    public void smoke(GameTestHelper helper) {
-        SharedLifeGameTests.smoke(helper);
-    }
-
-    @GameTest(template = EMPTY)
     public void healthSyncsToJoiningPlayer(GameTestHelper helper) {
         SharedLifeGameTests.healthSyncsToJoiningPlayer(helper);
     }

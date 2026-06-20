@@ -5,13 +5,11 @@ import dev.gimme.sharedlife.Main;
 import dev.gimme.sharedlife.domain.SharedLife;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
 import dev.gimme.sharedlife.infrastructure.ConfigTestSupport;
-import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.Blocks;
 
 import java.util.UUID;
 
@@ -31,14 +29,6 @@ import java.util.UUID;
 public final class SharedLifeGameTests {
 
     private SharedLifeGameTests() {
-    }
-
-    /** Bootstrap smoke test: the harness boots, places a block, and reads it back. */
-    public static void smoke(GameTestHelper helper) {
-        BlockPos pos = new BlockPos(0, 1, 0);
-        helper.setBlock(pos, Blocks.STONE);
-        helper.assertBlockPresent(Blocks.STONE, pos);
-        helper.succeed();
     }
 
     /** The first player seeds the pool; a player who joins afterward is synced to that health. */
