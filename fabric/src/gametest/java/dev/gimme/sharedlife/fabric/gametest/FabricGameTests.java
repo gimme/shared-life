@@ -11,11 +11,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 public final class FabricGameTests {
 
     @GameTest
-    public void smoke(GameTestHelper helper) {
-        SharedLifeGameTests.smoke(helper);
-    }
-
-    @GameTest
     public void healthSyncsToJoiningPlayer(GameTestHelper helper) {
         SharedLifeGameTests.healthSyncsToJoiningPlayer(helper);
     }

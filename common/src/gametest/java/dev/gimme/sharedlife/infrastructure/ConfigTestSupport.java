@@ -1,19 +1,12 @@
 package dev.gimme.sharedlife.infrastructure;
 
 import net.neoforged.neoforge.common.ModConfigSpec.BooleanValue;
+import net.neoforged.neoforge.common.ModConfigSpec.ConfigValue;
 
 /**
  * Test-only handles to {@link FcapServerConfig} values. Lives in the gametest source set's
  * {@code infrastructure} package so it can reach the package-private config fields; production code
  * still exposes only the read-only getters.
- *
- * <p>{@link #override} mutates the live config and returns a scope that restores the previous value
- * on close, keeping tests isolated:
- * <pre>{@code
- * try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
- *     // assert behaviour with the override applied
- * }
- * }</pre>
  */
 public final class ConfigTestSupport {
 
@@ -27,14 +20,19 @@ public final class ConfigTestSupport {
     private ConfigTestSupport() {
     }
 
-    /** A restore handle whose {@code close()} throws nothing, so it reads cleanly in try-with-resources. */
+    /**
+     * A restore handle whose {@code close()} throws nothing, so it reads cleanly in try-with-resources.
+     */
     public interface Scope extends AutoCloseable {
         @Override
         void close();
     }
 
-    public static Scope override(BooleanValue config, boolean value) {
-        boolean previous = config.get();
+    /**
+     * Mutates the live config and returns a scope that restores the previous value on close, keeping tests isolated.
+     */
+    public static <T> Scope override(ConfigValue<T> config, T value) {
+        T previous = config.get();
         config.set(value);
         return () -> config.set(previous);
     }

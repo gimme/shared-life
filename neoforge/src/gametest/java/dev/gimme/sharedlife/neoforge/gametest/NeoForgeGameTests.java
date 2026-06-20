@@ -35,7 +35,6 @@ public final class NeoForgeGameTests {
 
     // Test names become resource-location paths, so they must be snake_case ([a-z0-9/._-] only).
     private static final List<Test> TESTS = List.of(
-            new Test("smoke", 20, SharedLifeGameTests::smoke),
             new Test("health_syncs_to_joining_player", 100, SharedLifeGameTests::healthSyncsToJoiningPlayer),
             new Test("health_not_shared_when_disabled", 100, SharedLifeGameTests::healthNotSharedWhenDisabled),
             new Test("damage_reduces_shared_health", 100, SharedLifeGameTests::damageReducesSharedHealth),
