@@ -12,8 +12,3 @@ Makes all players share one health/hunger bar. When one player takes damage or e
 
 
 ![Logo](/images/logo.png)
-
-
-## Credits
-
-Project template used: https://github.com/jaredlll08/MultiLoader-Template
