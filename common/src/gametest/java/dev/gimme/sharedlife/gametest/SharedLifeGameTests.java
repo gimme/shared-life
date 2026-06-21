@@ -63,11 +63,15 @@ import java.util.UUID;
  * its own sequential batch); see the loader wiring.
  *
  * <h2>Shared singleton, deterministic seeding</h2>
- * The singleton's pool is shared across every test in a run, so each test first pins a deterministic
- * starting state with {@link #seedPoolFrom} (kill the pool, then re-seed it from a known player) before
- * exercising the behaviour under test. The share-* toggles are read globally from the live config, so
- * each test pins the ones it cares about with {@link ConfigTestSupport#override} (restored on scope
- * close) rather than leaning on the shipped defaults.
+ * The singleton's pool is shared across every test in a run, so real-player tests first call
+ * {@link #resetPool} <em>before spawning</em> — clearing whatever an earlier test left behind. With the pool
+ * dead, the spawns themselves establish the starting state through the mod's real join-sync: the first
+ * {@link #spawnRealPlayer} seeds the pool from its fresh, full state and each later spawn syncs to it, so
+ * tests that want that default need no further setup. A test that needs a <em>non-default</em> starting pool
+ * (a partial health, an emptied food bar) sets it on a player and pins it with {@link #seedPoolFrom} (kill
+ * the pool, then re-seed it from that known player) before exercising the behaviour under test. The share-*
+ * toggles are read globally from the live config, so each test pins the ones it cares about with
+ * {@link ConfigTestSupport#override} (restored on scope close) rather than leaning on the shipped defaults.
  */
 public final class SharedLifeGameTests {
 
@@ -88,12 +92,11 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            ServerPlayer a = spawnRealPlayer(helper, 20f);
-            ServerPlayer b = spawnRealPlayer(helper, 20f);
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
             try {
-                seedPoolFrom(a);                                       // pool seeded at 20 from A
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 20
-
+                // The spawns above already seeded the pool at 20 from A and synced B to it.
                 // Real damage on A routes through actuallyHurt -> the loader's damage hook -> pool 20 -> 14.
                 a.invulnerableTime = 0;
                 a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 6f);
@@ -120,8 +123,11 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            ServerPlayer a = spawnRealPlayer(helper, 10f);
-            ServerPlayer b = spawnRealPlayer(helper, 10f);
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            a.setHealth(10);
+            b.setHealth(10);
             try {
                 seedPoolFrom(a);                                       // pool seeded at 10 from A
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
@@ -153,12 +159,11 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            ServerPlayer a = spawnRealPlayer(helper, 20f);
-            ServerPlayer b = spawnRealPlayer(helper, 20f);
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
             try {
-                seedPoolFrom(a);
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
-
+                // The spawns above already seeded the pool at 20 from A and synced B to it.
                 // A real fatal blow on A goes through hurtServer -> die() -> the loader's death hook,
                 // which ends the shared life.
                 a.invulnerableTime = 0;
@@ -189,12 +194,11 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            ServerPlayer a = spawnRealPlayer(helper, 20f);
-            ServerPlayer b = spawnRealPlayer(helper, 20f);
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
             try {
-                seedPoolFrom(a);
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
-
+                // The spawns above already seeded the pool at 20 from A and synced B to it.
                 a.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TOTEM_OF_UNDYING));
 
                 // A fatal blow consumes the totem (vanilla saves A at 1 health) and fires the totem hook,
@@ -229,12 +233,11 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            ServerPlayer a = spawnRealPlayer(helper, 20f);
-            ServerPlayer b = spawnRealPlayer(helper, 20f);
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
             try {
-                seedPoolFrom(a);                                       // pool food seeded at 20 from A
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to food 20
-
+                // The spawns above already seeded the pool food at 20 from A and synced B to it.
                 a.getFoodData().setFoodLevel(14);
                 a.getFoodData().setSaturation(0f);
 
@@ -268,8 +271,9 @@ public final class SharedLifeGameTests {
 
             server.setDifficulty(Difficulty.HARD, true); // EASY/NORMAL won't starve a full-health heart
 
-            ServerPlayer a = spawnRealPlayer(helper, 20f);
-            ServerPlayer b = spawnRealPlayer(helper, 20f);
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
             try {
                 a.getFoodData().setFoodLevel(0);
                 a.getFoodData().setSaturation(0f);
@@ -305,12 +309,11 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, true)) {
 
-            ServerPlayer a = spawnRealPlayer(helper, 20f);
-            ServerPlayer b = spawnRealPlayer(helper, 20f);
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
             try {
-                seedPoolFrom(a);                                       // pool seeded at experience 0
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 0 levels
-
+                // The spawns above already seeded the pool experience at 0 from A and synced B to it.
                 a.giveExperienceLevels(5);
 
                 Main.INSTANCE.getServerHandler().onServerTick(); // shared experience sync
@@ -346,12 +349,11 @@ public final class SharedLifeGameTests {
         Scope shareHunger = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
         Scope shareExperience = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false);
 
-        ServerPlayer a = spawnRealPlayer(helper, 20f);
-        ServerPlayer b = spawnRealPlayer(helper, 20f);
+        resetPool(helper); // isolate from earlier tests so the spawns below start clean
+        ServerPlayer a = spawnRealPlayer(helper);
+        ServerPlayer b = spawnRealPlayer(helper);
 
-        seedPoolFrom(a);                                       // pool seeded at 20 from A
-        Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 20
-
+        // The spawns above already seeded the pool at 20 from A and synced B to it.
         a.invulnerableTime = 0;
         a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 6f); // pool 20 -> 14
 
@@ -485,10 +487,33 @@ public final class SharedLifeGameTests {
      * state unconditionally.
      */
     private static void seedPoolFrom(ServerPlayer seed) {
-        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
-            Main.INSTANCE.getPlayerHandler().onPlayerDeath(seed); // force the pool dead
-        }
+        killPool(seed);
         Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(seed); // pool dead -> re-seed from this player
+    }
+
+    /**
+     * Forces the shared pool dead, with health sharing temporarily on so {@code killBy} applies regardless
+     * of the test's toggles. {@code agent} is only read for the death-enabled check and the log line, so it
+     * need not be registered in the player list.
+     */
+    private static void killPool(ServerPlayer agent) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
+            Main.INSTANCE.getPlayerHandler().onPlayerDeath(agent); // force the pool dead
+        }
+    }
+
+    /**
+     * Test-isolation step, run before any player joins: returns the server-lifetime singleton to a clean
+     * (dead) pool so this test never inherits the health an earlier test left behind. With the pool dead,
+     * the first {@link #spawnRealPlayer} re-seeds it from a genuinely fresh, full-health player and later
+     * joins sync to that — the mod's real join logic, with nothing forced afterwards.
+     *
+     * <p>Reuses {@link #killPool}; since no player has been spawned yet, it passes a detached
+     * {@link FakePlayer} (never placed, never in the player list, its health irrelevant) purely to satisfy
+     * the kill's death-enabled gate.
+     */
+    private static void resetPool(GameTestHelper helper) {
+        killPool(spawnFake(helper, 20f));
     }
 
     /**
@@ -507,22 +532,17 @@ public final class SharedLifeGameTests {
      * <p>Registration is the "in level" half of the deprecated {@code makeMockServerPlayerInLevel()}: a fresh
      * {@link Connection} fed through an {@link EmbeddedChannel}, then {@code placeNewPlayer}.
      */
-    private static ServerPlayer spawnRealPlayer(GameTestHelper helper, float health) {
-        MinecraftServer server = helper.getLevel().getServer();
-
+    private static ServerPlayer spawnRealPlayer(GameTestHelper helper) {
         ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
-
-        CommonListenerCookie cookie = CommonListenerCookie.createInitial(player.getGameProfile(), false);
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
-        new EmbeddedChannel(connection); // wires connection.channel so placeNewPlayer can send packets
-        server.getPlayerList().placeNewPlayer(connection, player, cookie);
+        new EmbeddedChannel(connection);
+        helper.getLevel().getServer().getPlayerList()
+            .placeNewPlayer(connection, player, CommonListenerCookie.createInitial(player.getGameProfile(), false));
+        // Mock players aren't wired to a connection, so the server never runs their per-tick update.
+        helper.onEachTick(player::doTick);
 
-        // A freshly placed player is invulnerable until its client reports the level loaded
-        // (ServerPlayer.isInvulnerableTo -> !connection.hasClientLoaded()). Our mock has no real client,
-        // so simulate the "player loaded" packet to lift that spawn invulnerability.
+        // A freshly placed player is invulnerable until its client reports the level loaded.
         player.connection.handleAcceptPlayerLoad(new ServerboundPlayerLoadedPacket());
-
-        player.setHealth(health);
         player.invulnerableTime = 0;
         return player;
     }
