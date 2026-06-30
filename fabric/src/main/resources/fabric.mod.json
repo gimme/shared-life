@@ -13,7 +13,7 @@
         "sources": "https://github.com/gimme/shared-life"
     },
     "license": "${license}",
-    "environment": "server",
+    "environment": "*",
     "entrypoints": {
         "main": [
             "dev.gimme.sharedlife.fabric.FabricMod"
