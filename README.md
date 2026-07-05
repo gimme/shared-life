@@ -11,7 +11,7 @@ Makes all players share one health/hunger bar. When one player takes damage or e
 **Note:** After a server restart, the first player to join will use their current health/hunger to initialize the shared values.
 
 
-![Logo](/images/logo.png)
+![Logo](images/logo.png)
 
 
 ## Credits
