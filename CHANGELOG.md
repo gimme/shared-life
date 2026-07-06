@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v26.2-0.2.0] - 2026-07-06
+
 ### Added
 
 - Combined natural regeneration (`combineNaturalRegeneration`, enabled by default, applies while
@@ -23,6 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `shareHunger` now defaults to disabled, making everyone keeping their own hunger topped up (see
   `combineNaturalRegeneration`) the default experience. Existing config files keep their saved
   value.
+
+### Fixed
+
+- [Fabric] Fixed the mod not loading in LAN-opened worlds
 
 ## [v26.2-0.1.6] - 2026-06-20
 
