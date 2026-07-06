@@ -48,6 +48,26 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void combinedRegenHealsWhenAllFed(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenHealsWhenAllFed(helper);
+    }
+
+    @GameTest
+    public void combinedRegenBlockedWhileAnyoneHungry(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenBlockedWhileAnyoneHungry(helper);
+    }
+
+    @GameTest
+    public void combinedRegenFastOnlyWhenAllSaturated(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenFastOnlyWhenAllSaturated(helper);
+    }
+
+    @GameTest
+    public void individualRegenSuppressedWhenCombined(GameTestHelper helper) {
+        SharedLifeGameTests.individualRegenSuppressedWhenCombined(helper);
+    }
+
+    @GameTest
     public void experienceSyncsAcrossRealPlayers(GameTestHelper helper) {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }

@@ -13,9 +13,11 @@ public final class ConfigTestSupport {
     public static final BooleanValue SHARE_HEALTH = FcapServerConfig.SHARE_HEALTH;
     public static final BooleanValue SHARE_DEATH = FcapServerConfig.SHARE_DEATH;
     public static final BooleanValue SHARE_HUNGER = FcapServerConfig.SHARE_HUNGER;
+    public static final BooleanValue COMBINE_NATURAL_REGENERATION = FcapServerConfig.COMBINE_NATURAL_REGENERATION;
     public static final BooleanValue SHARE_EXPERIENCE = FcapServerConfig.SHARE_EXPERIENCE;
     public static final BooleanValue ANNOUNCE_DAMAGE = FcapServerConfig.ANNOUNCE_DAMAGE;
     public static final BooleanValue INCLUDE_DAMAGE_SOURCE = FcapServerConfig.INCLUDE_DAMAGE_SOURCE;
+    public static final BooleanValue ANNOUNCE_DEATH_SUMMARY = FcapServerConfig.ANNOUNCE_DEATH_SUMMARY;
 
     private ConfigTestSupport() {
     }

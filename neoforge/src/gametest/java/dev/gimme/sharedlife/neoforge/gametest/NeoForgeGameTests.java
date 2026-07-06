@@ -46,6 +46,10 @@ public final class NeoForgeGameTests {
             new Test("totem_revives_shared_life", 100, SharedLifeGameTests::totemRevivesSharedLife),
             new Test("hunger_syncs_across_real_players", 100, SharedLifeGameTests::hungerSyncsAcrossRealPlayers),
             new Test("starvation_hurts_all_players", 100, SharedLifeGameTests::starvationHurtsAllPlayers),
+            new Test("combined_regen_heals_when_all_fed", 100, SharedLifeGameTests::combinedRegenHealsWhenAllFed),
+            new Test("combined_regen_blocked_while_anyone_hungry", 100, SharedLifeGameTests::combinedRegenBlockedWhileAnyoneHungry),
+            new Test("combined_regen_fast_only_when_all_saturated", 100, SharedLifeGameTests::combinedRegenFastOnlyWhenAllSaturated),
+            new Test("individual_regen_suppressed_when_combined", 100, SharedLifeGameTests::individualRegenSuppressedWhenCombined),
             new Test("experience_syncs_across_real_players", 100, SharedLifeGameTests::experienceSyncsAcrossRealPlayers),
             // The one real-tick test: isolated so it gets its own environment (= own sequential batch) and
             // never shares a batch with a test that re-seeds the global pool while its players sit in the

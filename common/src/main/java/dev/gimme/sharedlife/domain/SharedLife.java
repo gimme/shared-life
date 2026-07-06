@@ -29,6 +29,8 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.text.DecimalFormat;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -44,7 +46,18 @@ public class SharedLife {
     private final Heart heart;
 
     private final FoodData foodData = new FoodData();
+
+    /**
+     * Runs vanilla's natural regeneration once for the whole group (see {@link #tickCombinedNaturalRegen}).
+     * Its food and saturation are rebuilt from the group's minimums every tick; the only state it carries
+     * across ticks is vanilla's internal regeneration timer, which restarts with each new shared life
+     * (see {@link #initializeFrom}) just as a respawned vanilla player's does.
+     */
+    private FoodData combinedRegenFoodData = new FoodData();
+
     private int experienceLevel;
+
+    private final Map<String, Float> damageTakenSinceFullHealth = new LinkedHashMap<>();
 
     private int previousFoodLevel;
     private float previousSaturation;
@@ -129,6 +142,9 @@ public class SharedLife {
         foodData.addExhaustion(getExhaustionLevel(player.getFoodData()));
         resetExhaustionLevel(player.getFoodData());
 
+        combinedRegenFoodData = new FoodData(); // fresh life, fresh vanilla regeneration timer
+
+        damageTakenSinceFullHealth.clear();
         resetPreviousStats();
         LOG.debug("Initialized shared life from player {}: {}", player.getName().getString(), this);
     }
@@ -141,6 +157,7 @@ public class SharedLife {
 
     public void tick() {
         tickHunger();
+        tickCombinedNaturalRegen();
         syncHealth();
         syncExperience();
     }
@@ -167,6 +184,46 @@ public class SharedLife {
         }
 
         resetPreviousStats();
+    }
+
+    /**
+     * Runs natural regeneration once for the whole group instead of once per fed player.
+     *
+     * <p>Each player's own regeneration is suppressed (see {@code MixinFoodData}); instead, vanilla's own
+     * regeneration logic runs here on {@link #combinedRegenFoodData}, primed with the group's lowest food
+     * and saturation levels. The group therefore heals at the rate of a single player, only while every player
+     * meets the vanilla conditions (everyone fed enough to regenerate; fast regeneration only when
+     * everyone is at full food with saturation), and the exhaustion vanilla charges for each heal is paid
+     * by every player.
+     *
+     * <p>Reusing {@link FoodData#tick} instead of re-implementing it keeps the conditions, speed, cost and
+     * timer semantics exactly vanilla's — including the {@code naturalRegeneration} gamerule, which the
+     * heart's tick still respects.
+     */
+    private void tickCombinedNaturalRegen() {
+        if (!config.shareHealth() || config.shareHunger() || !config.combineNaturalRegeneration()) return;
+
+        var players = getLiveSharedHealthPlayers().toList();
+        if (players.isEmpty()) return;
+
+        var foodLevel = Integer.MAX_VALUE;
+        var saturation = Float.MAX_VALUE;
+        for (ServerPlayer player : players) {
+            foodLevel = Math.min(foodLevel, player.getFoodData().getFoodLevel());
+            saturation = Math.min(saturation, player.getFoodData().getSaturationLevel());
+        }
+
+        // Clamped above zero so this FoodData never runs vanilla's starvation branch: a starving player
+        // already starves through their own FoodData, and that damage reaches the group as shared damage.
+        combinedRegenFoodData.setFoodLevel(Math.max(1, foodLevel));
+        combinedRegenFoodData.setSaturation(saturation);
+        combinedRegenFoodData.tick(heart); // any heal lands on the shared health via Heart#heal
+
+        var exhaustion = getExhaustionLevel(combinedRegenFoodData);
+        if (exhaustion > 0) {
+            resetExhaustionLevel(combinedRegenFoodData);
+            players.forEach(player -> player.getFoodData().addExhaustion(exhaustion));
+        }
     }
 
     private void syncHealth() {
@@ -210,6 +267,9 @@ public class SharedLife {
 
         setHealth(getHealth() - amount);
 
+        var name = hurtPlayer != null ? hurtPlayer.getName().getString() : Constants.MOD_NAME;
+        damageTakenSinceFullHealth.merge(name, amount, Float::sum);
+
         geSharedHealthPlayers().forEach(player -> sendDamageMessage(player, hurtPlayer, source, amount));
 
         if (source.is(DamageTypes.STARVE)) {
@@ -225,6 +285,11 @@ public class SharedLife {
         if (healedPlayer != null && !Players.isSharedHealthEnabled(healedPlayer)) return;
 
         setHealth(getHealth() + healAmount);
+
+        if (getHealth() >= heart.getMaxHealth()) {
+            // Fully healed: the next death summary should only cover the fall from here.
+            damageTakenSinceFullHealth.clear();
+        }
     }
 
     /**
@@ -249,7 +314,41 @@ public class SharedLife {
         if (!Players.isSharedDeathEnabled(deadPlayer)) return;
 
         setHealth(0);
+        announceDeathSummary();
         LOG.debug("{} has caused shared life death.", deadPlayer.getName().getString());
+    }
+
+    /**
+     * Announces how much damage each player took since the shared health was last full — the fall that ended
+     * the life — then starts a fresh count.
+     */
+    private void announceDeathSummary() {
+        var damageEntries = damageTakenSinceFullHealth.entrySet().stream()
+                .sorted(Map.Entry.<String, Float>comparingByValue().reversed())
+                .toList();
+        damageTakenSinceFullHealth.clear();
+
+        if (!config.announceDeathSummary()) return;
+        if (damageEntries.isEmpty()) return;
+
+        var message = Component.empty().withStyle(Style.EMPTY.withColor(ChatFormatting.GRAY))
+                .append(Component.translatableWithFallback("message.sharedlife.damage_taken", "Damage taken"))
+                .append(Component.literal(": "));
+
+        for (int i = 0; i < damageEntries.size(); i++) {
+            if (i > 0) {
+                message.append(Component.literal(", "));
+            }
+            var entry = damageEntries.get(i);
+            message
+                    .append(Component.literal(entry.getKey()).withStyle(Style.EMPTY.withColor(ChatFormatting.WHITE)))
+                    .append(Component.literal(" "))
+                    .append(Component.literal(HEARTS_DECIMAL_FORMAT.format(entry.getValue() / 2)).withStyle(Style.EMPTY.withColor(ChatFormatting.RED)))
+                    .append(Component.literal("❤").withStyle(Style.EMPTY.withColor(ChatFormatting.DARK_RED)));
+        }
+
+        geSharedHealthPlayers().forEach(player -> player.sendSystemMessage(message, false));
+        LOG.debug(message.getString());
     }
 
     private void killPlayer(@NotNull ServerPlayer player) {

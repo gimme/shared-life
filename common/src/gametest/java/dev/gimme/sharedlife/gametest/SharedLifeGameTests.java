@@ -3,6 +3,7 @@ package dev.gimme.sharedlife.gametest;
 import com.mojang.authlib.GameProfile;
 import dev.gimme.sharedlife.Main;
 import dev.gimme.sharedlife.domain.SharedLife;
+import dev.gimme.sharedlife.domain.util.ExtractingValueOutput;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
 import dev.gimme.sharedlife.infrastructure.ConfigTestSupport;
 import dev.gimme.sharedlife.infrastructure.ConfigTestSupport.Scope;
@@ -299,6 +300,173 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    // ---- combined natural regeneration ----
+
+    /**
+     * With every player fed to the vanilla regeneration threshold, the group heals — one heal, not
+     * one per fed player — and every player pays vanilla's exhaustion cost for it.
+     *
+     * <p>This drives the real {@code FoodData.tick} on the shared heart's combined-regeneration gate:
+     * both players sit at food 18 without saturation, so vanilla's slow branch fires after 80 ticks,
+     * healing the pool by exactly one point and charging each player 6.0 exhaustion.
+     */
+    public static void combinedRegenHealsWhenAllFed(GameTestHelper helper) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            a.setHealth(10);
+            b.setHealth(10);
+            try {
+                seedPoolFrom(a);                                       // pool seeded at 10 from A
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
+
+                setFood(a, 18, 0f); // fed enough for vanilla's slow regeneration, no saturation
+                setFood(b, 18, 0f);
+
+                for (int i = 0; i < 85; i++) {
+                    Main.INSTANCE.getServerHandler().onServerTick();
+                }
+
+                assertApproxHealth(helper, a, 11f); // exactly one vanilla heal (tick 80), not one per player
+                assertApproxHealth(helper, b, 11f);
+                assertExhaustion(helper, a, 6f);    // both players paid vanilla's cost for that heal
+                assertExhaustion(helper, b, 6f);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * One hungry player blocks the whole group's natural regeneration — a well-fed player camping in
+     * safety can no longer heal the pool while someone else runs on an empty stomach.
+     */
+    public static void combinedRegenBlockedWhileAnyoneHungry(GameTestHelper helper) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            a.setHealth(10);
+            b.setHealth(10);
+            try {
+                seedPoolFrom(a);                                       // pool seeded at 10 from A
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
+
+                setFood(a, 20, 5f); // A is perfectly fed...
+                setFood(b, 17, 0f); // ...but B is below the vanilla regeneration threshold of 18
+
+                for (int i = 0; i < 85; i++) {
+                    Main.INSTANCE.getServerHandler().onServerTick();
+                }
+
+                assertApproxHealth(helper, a, 10f); // no healing while anyone is too hungry
+                assertApproxHealth(helper, b, 10f);
+                assertExhaustion(helper, a, 0f);    // and nobody was charged for a heal that never happened
+                assertExhaustion(helper, b, 0f);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Vanilla's fast (saturated) regeneration applies only while <em>everyone</em> is at full food with
+     * saturation: with both players saturated one heal lands within 10 ticks, and after one player's
+     * saturation runs out the group drops back to the slow branch.
+     */
+    public static void combinedRegenFastOnlyWhenAllSaturated(GameTestHelper helper) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            a.setHealth(10);
+            b.setHealth(10);
+            try {
+                seedPoolFrom(a);                                       // pool seeded at 10 from A
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
+
+                setFood(a, 20, 6f); // everyone at full food with saturation:
+                setFood(b, 20, 8f); // vanilla's fast branch, limited by the lowest saturation (6)
+
+                for (int i = 0; i < 12; i++) {
+                    Main.INSTANCE.getServerHandler().onServerTick();
+                }
+
+                assertApproxHealth(helper, a, 11f); // one fast heal (tick 10) of min(6, 6) / 6 = 1.0
+                assertApproxHealth(helper, b, 11f);
+
+                setFood(b, 20, 0f); // B's saturation runs out: the group falls back to the slow branch
+
+                for (int i = 0; i < 15; i++) {
+                    Main.INSTANCE.getServerHandler().onServerTick();
+                }
+
+                assertApproxHealth(helper, a, 11f); // no fast heal without everyone saturated
+                assertApproxHealth(helper, b, 11f);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A player's own vanilla regeneration is suppressed while combined regeneration is active — and only
+     * then: with the option off, the same setup regenerates individually again.
+     *
+     * <p>This drives the player's real, mixin-instrumented {@code FoodData.tick} directly. With full food
+     * and saturation on a hurt player, vanilla's fast branch would heal within 10 ticks; the mixin makes
+     * the tick see the {@code naturalRegeneration} gamerule as off, so neither health nor exhaustion moves.
+     */
+    public static void individualRegenSuppressedWhenCombined(GameTestHelper helper) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, true)) {
+
+            ServerPlayer player = spawnFake(helper, 10f);
+            setFood(player, 20, 6f);
+
+            for (int i = 0; i < 15; i++) {
+                player.getFoodData().tick(player);
+            }
+
+            assertHealth(helper, player, 10f); // vanilla's fast regeneration never fired
+            assertExhaustion(helper, player, 0f);
+        }
+
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, false)) {
+
+            ServerPlayer player = spawnFake(helper, 10f);
+            setFood(player, 20, 6f);
+
+            for (int i = 0; i < 15; i++) {
+                player.getFoodData().tick(player);
+            }
+
+            helper.assertTrue(player.getHealth() > 10f,
+                    "combining is off, so the player should have regenerated on their own, but had health "
+                            + player.getHealth());
+        }
+        helper.succeed();
+    }
+
     // ---- experience ----
 
     /**
@@ -566,6 +734,19 @@ public final class SharedLifeGameTests {
         player.setGameMode(GameType.SURVIVAL);
         player.setHealth(health);
         return player;
+    }
+
+    private static void setFood(ServerPlayer player, int foodLevel, float saturation) {
+        player.getFoodData().setFoodLevel(foodLevel);
+        player.getFoodData().setSaturation(saturation);
+    }
+
+    /** Reads the player's exhaustion through {@link ExtractingValueOutput}, since vanilla exposes no getter. */
+    private static void assertExhaustion(GameTestHelper helper, ServerPlayer player, float expected) {
+        var output = new ExtractingValueOutput();
+        player.getFoodData().addAdditionalSaveData(output);
+        helper.assertTrue(Math.abs(output.getExhaustion() - expected) < 0.01f,
+                "expected exhaustion " + expected + " but player had " + output.getExhaustion());
     }
 
     private static void assertApproxHealth(GameTestHelper helper, ServerPlayer player, float expected) {
