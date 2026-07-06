@@ -58,6 +58,26 @@ public final class NeoForgeGameTests {
     }
 
     @GameTest(template = EMPTY)
+    public void combinedRegenHealsWhenAllFed(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenHealsWhenAllFed(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void combinedRegenBlockedWhileAnyoneHungry(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenBlockedWhileAnyoneHungry(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void combinedRegenFastOnlyWhenAllSaturated(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenFastOnlyWhenAllSaturated(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void individualRegenSuppressedWhenCombined(GameTestHelper helper) {
+        SharedLifeGameTests.individualRegenSuppressedWhenCombined(helper);
+    }
+
+    @GameTest(template = EMPTY)
     public void experienceSyncsAcrossRealPlayers(GameTestHelper helper) {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }

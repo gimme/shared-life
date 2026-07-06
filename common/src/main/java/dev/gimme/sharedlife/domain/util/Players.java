@@ -29,6 +29,20 @@ public class Players {
         return Main.INSTANCE.getServerConfig().shareHunger();
     }
 
+    /**
+     * Whether this player's natural regeneration is combined into the group's single, everyone-must-be-fed
+     * regeneration (managed by {@code SharedLife}) instead of running individually.
+     *
+     * <p>Only applies while health is shared but hunger is not: without a shared health bar there is
+     * nothing to combine into, and with a shared hunger bar the one bar already gates regeneration
+     * for everyone.
+     */
+    public static boolean isCombinedNaturalRegenerationEnabled(@NotNull ServerPlayer player) {
+        if (isEthereal(player)) return false;
+        ServerConfig config = Main.INSTANCE.getServerConfig();
+        return config.shareHealth() && !config.shareHunger() && config.combineNaturalRegeneration();
+    }
+
     public static boolean isSharedExperienceEnabled(@NotNull ServerPlayer player) {
         if (isEthereal(player)) return false;
         return Main.INSTANCE.getServerConfig().shareExperience();

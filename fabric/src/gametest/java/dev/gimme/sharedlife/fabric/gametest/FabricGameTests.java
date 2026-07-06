@@ -51,6 +51,26 @@ public final class FabricGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
+    public void combinedRegenHealsWhenAllFed(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenHealsWhenAllFed(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void combinedRegenBlockedWhileAnyoneHungry(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenBlockedWhileAnyoneHungry(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void combinedRegenFastOnlyWhenAllSaturated(GameTestHelper helper) {
+        SharedLifeGameTests.combinedRegenFastOnlyWhenAllSaturated(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void individualRegenSuppressedWhenCombined(GameTestHelper helper) {
+        SharedLifeGameTests.individualRegenSuppressedWhenCombined(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
     public void experienceSyncsAcrossRealPlayers(GameTestHelper helper) {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }

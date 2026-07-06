@@ -20,9 +20,11 @@ public class FcapServerConfig extends ServerConfig {
     static final BooleanValue SHARE_HEALTH;
     static final BooleanValue SHARE_DEATH;
     static final BooleanValue SHARE_HUNGER;
+    static final BooleanValue COMBINE_NATURAL_REGENERATION;
     static final BooleanValue SHARE_EXPERIENCE;
     static final BooleanValue ANNOUNCE_DAMAGE;
     static final BooleanValue INCLUDE_DAMAGE_SOURCE;
+    static final BooleanValue ANNOUNCE_DEATH_SUMMARY;
 
     static {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
@@ -37,7 +39,16 @@ public class FcapServerConfig extends ServerConfig {
 
         SHARE_HUNGER = builder
                 .comment("If hunger should be shared among players")
-                .define("shareHunger", true);
+                .define("shareHunger", false);
+
+        COMBINE_NATURAL_REGENERATION = builder
+                .comment("If natural regeneration should run once for the whole group instead of once per fed player, when hunger is not shared."
+                        + " The shared health then heals at the rate of a single player, only while every player meets the vanilla regeneration conditions"
+                        + " (everyone fed enough to heal; fast regeneration needs everyone at full hunger with saturation),"
+                        + " and each heal drains hunger from all players."
+                        + " If disabled, each player's own natural regeneration is added to the shared health separately."
+                        + " Ignored when shareHunger is enabled: the single shared hunger bar already gates regeneration for everyone.")
+                .define("combineNaturalRegeneration", true);
 
         SHARE_EXPERIENCE = builder
                 .comment("If experience should be shared among players")
@@ -50,6 +61,10 @@ public class FcapServerConfig extends ServerConfig {
         INCLUDE_DAMAGE_SOURCE = builder
                 .comment("If the source of the damage should be included in announcements")
                 .define("includeDamageSource", true);
+
+        ANNOUNCE_DEATH_SUMMARY = builder
+                .comment("If a summary of how much damage each player took should be announced in chat when the shared life ends")
+                .define("announceDeathSummary", true);
 
         SPEC = builder.build();
     }
@@ -70,6 +85,11 @@ public class FcapServerConfig extends ServerConfig {
     }
 
     @Override
+    public boolean combineNaturalRegeneration() {
+        return COMBINE_NATURAL_REGENERATION.get();
+    }
+
+    @Override
     public boolean shareExperience() {
         return SHARE_EXPERIENCE.get();
     }
@@ -82,5 +102,10 @@ public class FcapServerConfig extends ServerConfig {
     @Override
     public boolean includeDamageSource() {
         return INCLUDE_DAMAGE_SOURCE.get();
+    }
+
+    @Override
+    public boolean announceDeathSummary() {
+        return ANNOUNCE_DEATH_SUMMARY.get();
     }
 }
