@@ -2,7 +2,6 @@ package dev.gimme.sharedlife.gametest;
 
 import com.mojang.authlib.GameProfile;
 import dev.gimme.sharedlife.Main;
-import dev.gimme.sharedlife.domain.SharedLife;
 import dev.gimme.sharedlife.domain.util.ExtractingValueOutput;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
 import dev.gimme.sharedlife.infrastructure.ConfigTestSupport;
@@ -26,54 +25,17 @@ import net.minecraft.world.level.GameType;
 import java.util.UUID;
 
 /**
- * Loader-agnostic, end-to-end game test bodies. Each {@code static void(GameTestHelper)} method is one
- * test; a test passes by calling {@link GameTestHelper#succeed()} and fails by throwing.
+ * Loader-agnostic, end-to-end game test bodies, wired into {@code FabricGameTests} and
+ * {@code NeoForgeGameTests}. Every test drives the production {@link Main#INSTANCE} singleton through
+ * real gameplay ({@link ServerPlayer#hurtServer}, loader hooks, real {@code FoodData} ticks), so the
+ * pool and config are global state: tests reset/seed the pool and pin the config toggles they rely on
+ * with {@link ConfigTestSupport#override}.
  *
- * <p>To add a test: write the method here, then wire it into {@code FabricGameTests} and
- * {@code NeoForgeGameTests}.
- *
- * <h2>What "end-to-end" means here</h2>
- * Every test drives the production {@link Main#INSTANCE} singleton that the loader wired up at server
- * start — never a hand-built {@link SharedLife}. The behaviour under test is triggered through real
- * gameplay where one exists: real damage and healing route through {@link ServerPlayer#hurtServer} /
- * {@link ServerPlayer#heal} and the loader's mixin/event hook (Fabric's {@code MixinPlayer*} /
- * NeoForge's {@code Living*Event}); starvation runs the shared heart's real {@code FoodData.tick};
- * totems go through vanilla {@code checkTotemDeathProtection}; and every cross-player effect is observed
- * by running the real per-tick sync via {@link Main#getServerHandler()}.
- *
- * <h2>Two flavours of player</h2>
- * <ul>
- *   <li><b>Cross-player / per-tick tests</b> (damage, healing, hunger, starvation, totem, death cascade,
- *       experience) use {@link #spawnRealPlayer} so the players genuinely live in
- *       {@code server.getPlayerList()} — the same collection the per-tick sync loop iterates — and are
- *       removed again in a {@code finally}.
- *   <li><b>Join-time tests</b> (the {@code *NotSharedWhenDisabled} toggles, ethereal exclusion, death
- *       re-seed) only exercise {@link SharedLife#includePotentialNewPlayer} via
- *       {@code PlayerHandler.onPlayerJoinLevel}, which reads the joining player directly and never
- *       touches the player list, so they use lightweight detached {@link FakePlayer}s.
- * </ul>
- *
- * <h2>Hand-driven ticks, and the one exception</h2>
- * The per-tick tests advance the sync by hand with {@code Main.getServerHandler().onServerTick()} — fast,
- * atomic (the whole test runs inside a single server tick), and so insensitive to the order the game-test
- * framework happens to run tests in. That covers the <em>behaviour</em>, but not whether the loader
- * actually registered its per-tick hook. The single exception is {@link #serverTickHookIsWired}: it calls
- * no {@code onServerTick} and instead lets a real server tick fire the loader's registered
- * {@code END_SERVER_TICK} hook, so it fails if that wiring is ever dropped. Because it is the only test
- * whose players live in the shared player list <em>across</em> a tick boundary — where a concurrently
- * running test re-seeding the global pool would corrupt it — it runs in its own test environment (and so
- * its own sequential batch); see the loader wiring.
- *
- * <h2>Shared singleton, deterministic seeding</h2>
- * The singleton's pool is shared across every test in a run, so real-player tests first call
- * {@link #resetPool} <em>before spawning</em> — clearing whatever an earlier test left behind. With the pool
- * dead, the spawns themselves establish the starting state through the mod's real join-sync: the first
- * {@link #spawnRealPlayer} seeds the pool from its fresh, full state and each later spawn syncs to it, so
- * tests that want that default need no further setup. A test that needs a <em>non-default</em> starting pool
- * (a partial health, an emptied food bar) sets it on a player and pins it with {@link #seedPoolFrom} (kill
- * the pool, then re-seed it from that known player) before exercising the behaviour under test. The share-*
- * toggles are read globally from the live config, so each test pins the ones it cares about with
- * {@link ConfigTestSupport#override} (restored on scope close) rather than leaning on the shipped defaults.
+ * <p>Cross-player tests use {@link #spawnRealPlayer} — registered in the player list the per-tick sync
+ * iterates — and after {@link #resetPool} the spawns themselves seed the pool through the mod's real
+ * join-sync; join-time tests only need detached {@link FakePlayer}s. Ticks are driven by hand so each
+ * test runs atomically within one server tick, except {@link #serverTickHookIsWired}, which awaits a
+ * real tick in its own sequential batch.
  */
 public final class SharedLifeGameTests {
 
@@ -82,31 +44,23 @@ public final class SharedLifeGameTests {
 
     // ---- health: damage, healing, death cascade ----
 
-    /**
-     * Real damage on one player crosses the live shared pool to another on the next tick.
-     *
-     * <p>The hit goes through {@link ServerPlayer#hurtServer} → {@code Player.actuallyHurt} → the loader's
-     * damage hook, lowering the shared pool; the per-tick broadcast over {@code getPlayerList()} then
-     * pulls the second player down to match.
-     */
+    /** Real damage on one player crosses the live shared pool to another on the next tick. */
     public static void damageSyncsAcrossRealPlayers(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             try {
-                // The spawns above already seeded the pool at 20 from A and synced B to it.
-                // Real damage on A routes through actuallyHurt -> the loader's damage hook -> pool 20 -> 14.
                 a.invulnerableTime = 0;
                 a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 6f);
 
-                Main.INSTANCE.getServerHandler().onServerTick(); // broadcasts the pool over getPlayerList()
+                Main.INSTANCE.getServerHandler().onServerTick();
 
-                assertApproxHealth(helper, a, 14f); // took the blow directly
-                assertApproxHealth(helper, b, 14f); // synced down across the shared pool
+                assertApproxHealth(helper, a, 14f);
+                assertApproxHealth(helper, b, 14f);
             } finally {
                 removeRealPlayers(helper, a, b);
             }
@@ -115,23 +69,18 @@ public final class SharedLifeGameTests {
     }
 
     /**
-     * Armor on the hurt player reduces the damage that reaches the shared pool.
-     *
-     * <p>Vanilla applies the victim's armor inside {@code Player.actuallyHurt}, before the loader's damage
-     * hook reports the loss — so the pool must drop by the reduced amount, not the raw swing. Full iron
-     * armor (15 points, no toughness) against a 9.0 hit (a stone axe swing) reduces it by
-     * {@code clamp(15 - 9/2, 3, 20) / 25 = 42%} to 5.22, taking the pool from 20 to 14.78.
+     * The pool drops by the armor-reduced damage, not the raw hit: vanilla applies armor before the
+     * loader's damage hook, so full iron armor (15 points) reduces a 9.0 hit by 42% to 5.22.
      */
     public static void armorReducesSharedDamage(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             try {
-                // The spawns above already seeded the pool at 20 from A and synced B to it.
                 a.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
                 a.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
                 a.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.IRON_LEGGINGS));
@@ -142,10 +91,10 @@ public final class SharedLifeGameTests {
                 a.invulnerableTime = 0;
                 a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(b), 9f);
 
-                Main.INSTANCE.getServerHandler().onServerTick(); // broadcasts the pool over getPlayerList()
+                Main.INSTANCE.getServerHandler().onServerTick();
 
-                assertApproxHealth(helper, a, 14.78f); // took the armor-reduced 5.22, not the raw 9
-                assertApproxHealth(helper, b, 14.78f); // synced down by the reduced amount too
+                assertApproxHealth(helper, a, 14.78f);
+                assertApproxHealth(helper, b, 14.78f);
             } finally {
                 removeRealPlayers(helper, a, b);
             }
@@ -153,33 +102,27 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
-    /**
-     * Real healing on one player raises the shared pool and lifts another on the next tick.
-     *
-     * <p>{@link ServerPlayer#heal} fires the loader's heal hook, so the shared pool climbs back up and the
-     * per-tick sync raises everyone else to match.
-     */
+    /** Real healing on one player raises the shared pool and lifts another on the next tick. */
     public static void healingSyncsAcrossRealPlayers(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             a.setHealth(10);
             b.setHealth(10);
             try {
-                seedPoolFrom(a);                                       // pool seeded at 10 from A
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
+                seedPoolFrom(a);
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
-                // Real heal on A fires the loader's heal hook -> pool 10 -> 14.
                 a.heal(4f);
 
                 Main.INSTANCE.getServerHandler().onServerTick();
 
-                assertApproxHealth(helper, a, 14f); // healed directly
-                assertApproxHealth(helper, b, 14f); // synced up across the shared pool
+                assertApproxHealth(helper, a, 14f);
+                assertApproxHealth(helper, b, 14f);
             } finally {
                 removeRealPlayers(helper, a, b);
             }
@@ -187,30 +130,20 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
-    /**
-     * One player's death ends the shared life, and the next tick kills everyone still alive.
-     *
-     * <p>A real fatal blow on one player routes through {@link ServerPlayer#hurtServer} → {@code die()} →
-     * the loader's death hook (Fabric's {@code MixinPlayerDie} / NeoForge's {@code LivingDeathEvent}), which
-     * ends the shared life. The cascade then runs: {@code syncHealth} sees the dead pool and applies lethal
-     * {@code shared_life} damage to every other live player, again via {@link ServerPlayer#hurtServer}.
-     */
+    /** One player's death ends the shared life, and the next tick kills everyone still alive. */
     public static void deathCascadesToAllPlayers(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             try {
-                // The spawns above already seeded the pool at 20 from A and synced B to it.
-                // A real fatal blow on A goes through hurtServer -> die() -> the loader's death hook,
-                // which ends the shared life.
                 a.invulnerableTime = 0;
                 a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 1000f);
 
-                Main.INSTANCE.getServerHandler().onServerTick();    // cascade: kills every live player
+                Main.INSTANCE.getServerHandler().onServerTick();
 
                 helper.assertTrue(a.isDeadOrDying(),
                         "A should have died from the fatal blow, but had health " + a.getHealth());
@@ -223,27 +156,18 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
-    /**
-     * A totem of undying revives a pool that has died, restoring it to one health for everyone.
-     *
-     * <p>A real fatal blow on a totem-holding player triggers vanilla {@code checkTotemDeathProtection},
-     * which the loader's totem hook observes and turns into a shared-life revive; the next tick lifts the
-     * other player off the floor too.
-     */
+    /** A totem of undying on the fatally hit player revives the shared pool to one health for everyone. */
     public static void totemRevivesSharedLife(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             try {
-                // The spawns above already seeded the pool at 20 from A and synced B to it.
                 a.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TOTEM_OF_UNDYING));
 
-                // A fatal blow consumes the totem (vanilla saves A at 1 health) and fires the totem hook,
-                // which revives the shared pool to 1.
                 a.invulnerableTime = 0;
                 a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 1000f);
 
@@ -252,8 +176,8 @@ public final class SharedLifeGameTests {
 
                 Main.INSTANCE.getServerHandler().onServerTick();
 
-                assertApproxHealth(helper, a, 1f); // saved by the totem
-                assertApproxHealth(helper, b, 1f); // revived across the shared pool
+                assertApproxHealth(helper, a, 1f);
+                assertApproxHealth(helper, b, 1f);
             } finally {
                 removeRealPlayers(helper, a, b);
             }
@@ -263,26 +187,20 @@ public final class SharedLifeGameTests {
 
     // ---- hunger & starvation ----
 
-    /**
-     * A change to one player's food crosses the shared pool to another on the next tick.
-     *
-     * <p>Vanilla hunger is disabled for shared players and managed by the shared heart, so dropping A's
-     * food and running the real per-tick hunger sync pulls B's food down to match.
-     */
+    /** A change to one player's food crosses the shared pool to another on the next tick. */
     public static void hungerSyncsAcrossRealPlayers(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             try {
-                // The spawns above already seeded the pool food at 20 from A and synced B to it.
                 a.getFoodData().setFoodLevel(14);
                 a.getFoodData().setSaturation(0f);
 
-                Main.INSTANCE.getServerHandler().onServerTick(); // shared hunger sync
+                Main.INSTANCE.getServerHandler().onServerTick();
 
                 helper.assertTrue(a.getFoodData().getFoodLevel() == 14,
                         "A should have kept food 14, but had " + a.getFoodData().getFoodLevel());
@@ -296,12 +214,8 @@ public final class SharedLifeGameTests {
     }
 
     /**
-     * When the shared food empties, the shared heart starves and the damage is dealt to every player.
-     *
-     * <p>This drives the real {@code FoodData.tick} on the shared heart: with food at zero and HARD
-     * difficulty it eventually applies starvation, which the mod distributes to every live player as
-     * {@code shared_life} damage. Because that damage type bypasses invulnerability, both players take it
-     * on the same tick.
+     * When the shared food empties, the shared heart starves and every player takes the damage — as
+     * {@code shared_life} damage, which bypasses invulnerability, so both take it on the same tick.
      */
     public static void starvationHurtsAllPlayers(GameTestHelper helper) {
         MinecraftServer server = helper.getLevel().getServer();
@@ -312,14 +226,14 @@ public final class SharedLifeGameTests {
 
             server.setDifficulty(Difficulty.HARD, true); // EASY/NORMAL won't starve a full-health heart
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             try {
                 a.getFoodData().setFoodLevel(0);
                 a.getFoodData().setSaturation(0f);
-                seedPoolFrom(a);                                       // pool seeded at health 20, food 0
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to health 20, food 0
+                seedPoolFrom(a);
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
                 // Vanilla starvation fires once every 80 ticks of empty food; tick until the heart starves.
                 boolean starved = false;
@@ -329,8 +243,8 @@ public final class SharedLifeGameTests {
                 }
 
                 helper.assertTrue(starved, "the shared heart should have starved within 90 ticks");
-                assertApproxHealth(helper, a, 19f); // took a point of shared starvation
-                assertApproxHealth(helper, b, 19f); // and so did B, across the shared pool
+                assertApproxHealth(helper, a, 19f);
+                assertApproxHealth(helper, b, 19f);
             } finally {
                 removeRealPlayers(helper, a, b);
             }
@@ -343,12 +257,8 @@ public final class SharedLifeGameTests {
     // ---- combined natural regeneration ----
 
     /**
-     * With every player fed to the vanilla regeneration threshold, the group heals — one heal, not
-     * one per fed player — and every player pays vanilla's exhaustion cost for it.
-     *
-     * <p>This drives the real {@code FoodData.tick} on the shared heart's combined-regeneration gate:
-     * both players sit at food 18 without saturation, so vanilla's slow branch fires after 80 ticks,
-     * healing the pool by exactly one point and charging each player 6.0 exhaustion.
+     * With every player fed to vanilla's regeneration threshold, the group heals — one heal, not one
+     * per fed player — and every player pays vanilla's exhaustion cost for it.
      */
     public static void combinedRegenHealsWhenAllFed(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -356,14 +266,14 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             a.setHealth(10);
             b.setHealth(10);
             try {
-                seedPoolFrom(a);                                       // pool seeded at 10 from A
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
+                seedPoolFrom(a);
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
                 setFood(a, 18, 0f); // fed enough for vanilla's slow regeneration, no saturation
                 setFood(b, 18, 0f);
@@ -383,35 +293,32 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
-    /**
-     * One hungry player blocks the whole group's natural regeneration — a well-fed player camping in
-     * safety can no longer heal the pool while someone else runs on an empty stomach.
-     */
+    /** One hungry player blocks the whole group's natural regeneration. */
     public static void combinedRegenBlockedWhileAnyoneHungry(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             a.setHealth(10);
             b.setHealth(10);
             try {
-                seedPoolFrom(a);                                       // pool seeded at 10 from A
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
+                seedPoolFrom(a);
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
-                setFood(a, 20, 5f); // A is perfectly fed...
-                setFood(b, 17, 0f); // ...but B is below the vanilla regeneration threshold of 18
+                setFood(a, 20, 5f);
+                setFood(b, 17, 0f); // below vanilla's regeneration threshold of 18
 
                 for (int i = 0; i < 85; i++) {
                     Main.INSTANCE.getServerHandler().onServerTick();
                 }
 
-                assertApproxHealth(helper, a, 10f); // no healing while anyone is too hungry
+                assertApproxHealth(helper, a, 10f);
                 assertApproxHealth(helper, b, 10f);
-                assertExhaustion(helper, a, 0f);    // and nobody was charged for a heal that never happened
+                assertExhaustion(helper, a, 0f);
                 assertExhaustion(helper, b, 0f);
             } finally {
                 removeRealPlayers(helper, a, b);
@@ -422,8 +329,7 @@ public final class SharedLifeGameTests {
 
     /**
      * Vanilla's fast (saturated) regeneration applies only while <em>everyone</em> is at full food with
-     * saturation: with both players saturated one heal lands within 10 ticks, and after one player's
-     * saturation runs out the group drops back to the slow branch.
+     * saturation, limited by the group's lowest saturation.
      */
     public static void combinedRegenFastOnlyWhenAllSaturated(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -431,14 +337,14 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.COMBINE_NATURAL_REGENERATION, true);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             a.setHealth(10);
             b.setHealth(10);
             try {
-                seedPoolFrom(a);                                       // pool seeded at 10 from A
-                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // B synced to 10
+                seedPoolFrom(a);
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
                 setFood(a, 20, 6f); // everyone at full food with saturation:
                 setFood(b, 20, 8f); // vanilla's fast branch, limited by the lowest saturation (6)
@@ -466,12 +372,8 @@ public final class SharedLifeGameTests {
     }
 
     /**
-     * A player's own vanilla regeneration is suppressed while combined regeneration is active — and only
-     * then: with the option off, the same setup regenerates individually again.
-     *
-     * <p>This drives the player's real, mixin-instrumented {@code FoodData.tick} directly. With full food
-     * and saturation on a hurt player, vanilla's fast branch would heal within 10 ticks; the mixin makes
-     * the tick see the {@code naturalRegeneration} gamerule as off, so neither health nor exhaustion moves.
+     * A player's own vanilla regeneration is suppressed (via {@code MixinFoodData}) while combined
+     * regeneration is active — and only then: with the option off, the same setup regenerates again.
      */
     public static void individualRegenSuppressedWhenCombined(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -517,14 +419,13 @@ public final class SharedLifeGameTests {
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
              var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, true)) {
 
-            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
             try {
-                // The spawns above already seeded the pool experience at 0 from A and synced B to it.
                 a.giveExperienceLevels(5);
 
-                Main.INSTANCE.getServerHandler().onServerTick(); // shared experience sync
+                Main.INSTANCE.getServerHandler().onServerTick();
 
                 helper.assertTrue(a.experienceLevel == 5,
                         "A should have kept 5 levels, but had " + a.experienceLevel);
@@ -540,36 +441,30 @@ public final class SharedLifeGameTests {
     // ---- loader wiring: the real per-tick hook ----
 
     /**
-     * The one test that does <em>not</em> tick by hand: it proves the loader actually registered its
-     * per-tick hook. After lowering the shared pool, it lets a real server tick fire the loader's
-     * {@code END_SERVER_TICK} hook (Fabric {@code ServerTickEvents.END_SERVER_TICK} / NeoForge
-     * {@code ServerTickEvent.Post}) and asserts the second player synced. If that registration were ever
-     * dropped, every hand-driven behavioural test above would still pass while this one fails.
-     *
-     * <p>It must run in its own test environment (see the loader wiring): it is the only test whose players
-     * stay in the shared player list across a tick boundary, so sharing a batch with another test that
-     * re-seeds the global pool mid-flight would corrupt it. Because the assertion runs after the test body
-     * returns, the config {@link Scope}s and players are released inside the deferred callback rather than
-     * via try-with-resources, which would restore them before the awaited tick.
+     * The one test that does <em>not</em> tick by hand: a real server tick must fire the loader's
+     * registered per-tick hook, so this fails if that wiring is ever dropped while every hand-driven
+     * test above still passes. It must run in its own test environment (see the loader wiring), being the
+     * only test whose players stay in the player list across a tick boundary; the config {@link Scope}s
+     * and players are released inside the deferred callback, since try-with-resources would restore them
+     * before the awaited tick.
      */
     public static void serverTickHookIsWired(GameTestHelper helper) {
         Scope shareHealth = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
         Scope shareHunger = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
         Scope shareExperience = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false);
 
-        resetPool(helper); // isolate from earlier tests so the spawns below start clean
+        resetPool(helper);
         ServerPlayer a = spawnRealPlayer(helper);
         ServerPlayer b = spawnRealPlayer(helper);
 
-        // The spawns above already seeded the pool at 20 from A and synced B to it.
         a.invulnerableTime = 0;
         a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().generic(), 6f); // pool 20 -> 14
 
         // Deliberately NO onServerTick(): the loader's registered END_SERVER_TICK hook must run the sync.
         succeedAfterTicks(helper, 2,
                 () -> {
-                    assertApproxHealth(helper, a, 14f); // took the blow directly
-                    assertApproxHealth(helper, b, 14f); // only synced if the loader's tick hook fired
+                    assertApproxHealth(helper, a, 14f);
+                    assertApproxHealth(helper, b, 14f);
                 },
                 () -> removeRealPlayers(helper, a, b),
                 shareHealth, shareHunger, shareExperience);
@@ -580,12 +475,12 @@ public final class SharedLifeGameTests {
     /** With health sharing off, a joining player keeps their own health. */
     public static void healthNotSharedWhenDisabled(GameTestHelper helper) {
         ServerPlayer seed = spawnFake(helper, 7f);
-        seedPoolFrom(seed); // pool seeded at 7
+        seedPoolFrom(seed);
 
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, false)) {
             ServerPlayer joiner = spawnFake(helper, 20f);
             Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
-            assertHealth(helper, joiner, 20f); // untouched
+            assertHealth(helper, joiner, 20f);
         }
         helper.succeed();
     }
@@ -594,7 +489,7 @@ public final class SharedLifeGameTests {
     public static void hungerNotSharedWhenDisabled(GameTestHelper helper) {
         ServerPlayer seed = spawnFake(helper, 20f);
         seed.getFoodData().setFoodLevel(7);
-        seedPoolFrom(seed); // pool seeded at food 7
+        seedPoolFrom(seed);
 
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false)) {
             ServerPlayer joiner = spawnFake(helper, 20f);
@@ -610,10 +505,10 @@ public final class SharedLifeGameTests {
     public static void experienceNotSharedWhenDisabled(GameTestHelper helper) {
         ServerPlayer seed = spawnFake(helper, 20f);
         seed.giveExperienceLevels(5);
-        seedPoolFrom(seed); // pool seeded at experience 5
+        seedPoolFrom(seed);
 
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
-            ServerPlayer joiner = spawnFake(helper, 20f); // no levels
+            ServerPlayer joiner = spawnFake(helper, 20f);
             Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
             helper.assertTrue(joiner.experienceLevel == 0,
                     "experience sharing is off, so the joining player should keep 0 levels, but had "
@@ -646,12 +541,12 @@ public final class SharedLifeGameTests {
     public static void deathReseedsFromNextJoiner(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
             ServerPlayer seed = spawnFake(helper, 20f);
-            seedPoolFrom(seed);                                    // pool alive at 20
+            seedPoolFrom(seed);
 
-            Main.INSTANCE.getPlayerHandler().onPlayerDeath(seed);  // pool dies; the next joiner restarts it
+            Main.INSTANCE.getPlayerHandler().onPlayerDeath(seed);
 
             ServerPlayer reseeder = spawnFake(helper, 6f);
-            Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(reseeder); // pool re-seeded at 6
+            Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(reseeder);
 
             ServerPlayer joiner = spawnFake(helper, 20f);
             Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
@@ -664,12 +559,9 @@ public final class SharedLifeGameTests {
     // ---- helpers ----
 
     /**
-     * Lets {@code delayTicks} real server ticks elapse — so the loader's registered
-     * {@code END_SERVER_TICK} hook drives the shared-life sync exactly as it does in production — then
-     * runs {@code assertion} once and passes the test. The {@code cleanup} and every config {@code scope}
-     * are released afterwards whether the assertion passes or throws, so a failing test can't leak its
-     * players or config overrides into the next one. Only {@link #serverTickHookIsWired} uses this; the
-     * other per-tick tests advance the sync synchronously instead.
+     * Lets {@code delayTicks} real server ticks elapse, then runs {@code assertion} once and passes the
+     * test. The cleanup and config scopes are released even when the assertion throws, so a failing test
+     * can't leak players or config overrides into the next one.
      */
     private static void succeedAfterTicks(GameTestHelper helper, int delayTicks, Runnable assertion,
                                           Runnable cleanup, Scope... scopes) {
@@ -689,10 +581,6 @@ public final class SharedLifeGameTests {
     /**
      * Pins a deterministic starting state on the shared singleton: kills the pool, then re-seeds it from
      * {@code seed}'s current health/food/experience.
-     *
-     * <p>The kill is forced with health sharing temporarily on (so {@code killBy} applies regardless of the
-     * test's toggles); the re-seed runs through {@code initializeFrom}, which copies the player's full
-     * state unconditionally.
      */
     private static void seedPoolFrom(ServerPlayer seed) {
         killPool(seed);
@@ -700,45 +588,29 @@ public final class SharedLifeGameTests {
     }
 
     /**
-     * Forces the shared pool dead, with health sharing temporarily on so {@code killBy} applies regardless
-     * of the test's toggles. {@code agent} is only read for the death-enabled check and the log line, so it
-     * need not be registered in the player list.
+     * Forces the shared pool dead, with health sharing temporarily on so {@code killBy} applies
+     * regardless of the test's toggles.
      */
     private static void killPool(ServerPlayer agent) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
-            Main.INSTANCE.getPlayerHandler().onPlayerDeath(agent); // force the pool dead
+            Main.INSTANCE.getPlayerHandler().onPlayerDeath(agent);
         }
     }
 
     /**
-     * Test-isolation step, run before any player joins: returns the server-lifetime singleton to a clean
-     * (dead) pool so this test never inherits the health an earlier test left behind. With the pool dead,
-     * the first {@link #spawnRealPlayer} re-seeds it from a genuinely fresh, full-health player and later
-     * joins sync to that — the mod's real join logic, with nothing forced afterwards.
-     *
-     * <p>Reuses {@link #killPool}; since no player has been spawned yet, it passes a detached
-     * {@link FakePlayer} (never placed, never in the player list, its health irrelevant) purely to satisfy
-     * the kill's death-enabled gate.
+     * Test-isolation step, run before any player joins: returns the server-lifetime singleton to a dead
+     * pool so this test never inherits what an earlier test left behind — the first spawn then re-seeds
+     * it fresh through the mod's real join logic.
      */
     private static void resetPool(GameTestHelper helper) {
         killPool(spawnFake(helper, 20f));
     }
 
     /**
-     * A real, survival player registered in {@code server.getPlayerList()} — so the per-tick sync loop,
-     * which iterates that list, actually sees it.
-     *
-     * <p>The player comes straight from {@link GameTestHelper#makeMockServerPlayer(GameType)}, which pins
-     * {@code gameMode()} to {@link GameType#SURVIVAL} (so it is never ethereal) and applies survival
-     * abilities — clearing the {@code invulnerable} flag the game-test server's default creative mode leaves
-     * set, which would otherwise make {@code hurtServer} a no-op. Unlike a {@link FakePlayer}, it has no
-     * neutered {@code die()}/{@code tick()}: death and per-tick processing run for real, so a fatal blow
-     * actually fires the loader's death hook ({@code ServerPlayer.die} → Fabric's {@code MixinPlayerDie} /
-     * NeoForge's {@code LivingDeathEvent}) — exactly the wiring these end-to-end tests exist to drive. (The
-     * helper returns {@link net.minecraft.world.entity.player.Player}; the value is a {@link ServerPlayer}.)
-     *
-     * <p>Registration is the "in level" half of the deprecated {@code makeMockServerPlayerInLevel()}: a fresh
-     * {@link Connection} fed through an {@link EmbeddedChannel}, then {@code placeNewPlayer}.
+     * A real, survival player registered in {@code server.getPlayerList()}, so the per-tick sync loop
+     * sees it and death/tick processing runs for real. {@link GameTestHelper#makeMockServerPlayer(GameType)}
+     * pins survival (never ethereal, survival abilities); registration mirrors the "in level" half of the
+     * deprecated {@code makeMockServerPlayerInLevel()}.
      */
     private static ServerPlayer spawnRealPlayer(GameTestHelper helper) {
         ServerPlayer player = (ServerPlayer) helper.makeMockServerPlayer(GameType.SURVIVAL);
@@ -762,10 +634,7 @@ public final class SharedLifeGameTests {
         }
     }
 
-    /**
-     * A detached survival {@link FakePlayer} that is <em>not</em> registered in the player list — enough for
-     * join-time tests, which only pass the player to {@code onPlayerJoinLevel} and read its state back.
-     */
+    /** A detached survival {@link FakePlayer}, not registered in the player list — enough for join-time tests. */
     private static ServerPlayer spawnFake(GameTestHelper helper, float health) {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = new FakePlayer(level, new GameProfile(UUID.randomUUID(), "TestPlayer"));

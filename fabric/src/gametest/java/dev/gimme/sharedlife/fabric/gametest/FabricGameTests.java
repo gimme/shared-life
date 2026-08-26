@@ -5,15 +5,8 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 /**
- * Fabric test wiring, scanned via the {@code fabric-gametest} entrypoint. One {@link GameTest}
- * delegate per shared test; the structure defaults to Fabric API's built-in empty 8x8x8.
- *
- * <p>All tests but one tick by hand and assert synchronously, so they coexist fine on the default
- * environment. The exception is {@link SharedLifeGameTests#serverTickHookIsWired}, which lets a real
- * server tick fire the loader's hook: it's the only test whose players live in the shared player list
- * across a tick boundary, so it gets its own single-use environment
- * ({@code sharedlife:env/server_tick_hook_is_wired}, defined under {@code data/sharedlife/test_environment})
- * to force it into a sequential batch of its own, away from any test that re-seeds the global pool.
+ * Fabric test wiring, scanned via the {@code fabric-gametest} entrypoint: one {@link GameTest} delegate
+ * per shared test, on Fabric API's built-in empty 8x8x8 structure.
  */
 public final class FabricGameTests {
 
@@ -77,7 +70,8 @@ public final class FabricGameTests {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }
 
-    // The one real-tick test: its own environment keeps it in a sequential batch of its own.
+    // The one real-tick test: its own environment (defined under data/sharedlife/test_environment)
+    // keeps it in a sequential batch of its own.
     @GameTest(environment = "sharedlife:env/server_tick_hook_is_wired")
     public void serverTickHookIsWired(GameTestHelper helper) {
         SharedLifeGameTests.serverTickHookIsWired(helper);

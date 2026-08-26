@@ -52,9 +52,7 @@ public final class NeoForgeGameTests {
             new Test("combined_regen_fast_only_when_all_saturated", 100, SharedLifeGameTests::combinedRegenFastOnlyWhenAllSaturated),
             new Test("individual_regen_suppressed_when_combined", 100, SharedLifeGameTests::individualRegenSuppressedWhenCombined),
             new Test("experience_syncs_across_real_players", 100, SharedLifeGameTests::experienceSyncsAcrossRealPlayers),
-            // The one real-tick test: isolated so it gets its own environment (= own sequential batch) and
-            // never shares a batch with a test that re-seeds the global pool while its players sit in the
-            // shared list across a tick boundary.
+            // The one real-tick test: isolated, so nothing else runs while its players await a real tick.
             new Test("server_tick_hook_is_wired", 100, true, SharedLifeGameTests::serverTickHookIsWired),
             new Test("health_not_shared_when_disabled", 100, SharedLifeGameTests::healthNotSharedWhenDisabled),
             new Test("hunger_not_shared_when_disabled", 100, SharedLifeGameTests::hungerNotSharedWhenDisabled),
@@ -73,11 +71,8 @@ public final class NeoForgeGameTests {
 
     @SubscribeEvent
     static void registerTests(RegisterGameTestsEvent event) {
-        // Hand-driven tests assert synchronously within a single tick, so they share one environment (one
-        // batch) and may run concurrently. An isolated test runs on real ticks, with its players living in
-        // the shared player list across a tick boundary, so it gets its own environment — the framework runs
-        // each environment's batch strictly sequentially — to keep it away from any test re-seeding the
-        // global pool mid-flight.
+        // Hand-driven tests share one environment (one batch) and may run concurrently; an isolated
+        // test gets its own environment, which the framework runs as its own sequential batch.
         Holder<TestEnvironmentDefinition<?>> shared = event.registerEnvironment(id("default"));
         TESTS.forEach(test -> {
             Holder<TestEnvironmentDefinition<?>> environment =
