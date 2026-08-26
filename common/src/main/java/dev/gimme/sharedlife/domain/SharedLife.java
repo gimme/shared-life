@@ -9,6 +9,7 @@ import dev.gimme.sharedlife.domain.util.Players;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.protocol.game.ClientboundHurtAnimationPacket;
@@ -152,6 +153,34 @@ public class SharedLife {
         previousFoodLevel = foodData.getFoodLevel();
         previousSaturation = foodData.getSaturationLevel();
         previousExperienceLevel = experienceLevel;
+    }
+
+    /**
+     * Writes the shared life state to the given tag, to be saved with the world (see
+     * {@code SharedLifePersistence}). Deliberately minimal: the combined-regen timer and the
+     * damage-summary ledger are transient and restart empty.
+     */
+    public CompoundTag save(CompoundTag tag) {
+        tag.putFloat("health", getHealth());
+        tag.putInt("experienceLevel", experienceLevel);
+
+        var foodTag = new CompoundTag();
+        foodData.addAdditionalSaveData(foodTag);
+        tag.put("food", foodTag);
+
+        return tag;
+    }
+
+    /**
+     * Restores the shared life state saved with the world, replacing the current state.
+     */
+    public void load(CompoundTag tag) {
+        setHealth(tag.getFloat("health"));
+        setExperienceLevels(tag.getInt("experienceLevel"));
+        foodData.readAdditionalSaveData(tag.getCompound("food"));
+
+        resetPreviousStats();
+        LOG.debug("Loaded shared life saved with the world: {}", this);
     }
 
     public void tick() {

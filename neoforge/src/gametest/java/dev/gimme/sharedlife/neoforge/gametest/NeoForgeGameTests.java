@@ -108,4 +108,9 @@ public final class NeoForgeGameTests {
     public void deathReseedsFromNextJoiner(GameTestHelper helper) {
         SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
     }
+
+    @GameTest(template = EMPTY)
+    public void savedStateRestoresAfterReload(GameTestHelper helper) {
+        SharedLifeGameTests.savedStateRestoresAfterReload(helper);
+    }
 }
