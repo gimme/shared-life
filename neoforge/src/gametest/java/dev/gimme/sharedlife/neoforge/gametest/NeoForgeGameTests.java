@@ -58,7 +58,8 @@ public final class NeoForgeGameTests {
             new Test("hunger_not_shared_when_disabled", 100, SharedLifeGameTests::hungerNotSharedWhenDisabled),
             new Test("experience_not_shared_when_disabled", 100, SharedLifeGameTests::experienceNotSharedWhenDisabled),
             new Test("ethereal_players_excluded", 100, SharedLifeGameTests::etherealPlayersExcluded),
-            new Test("death_reseeds_from_next_joiner", 100, SharedLifeGameTests::deathReseedsFromNextJoiner));
+            new Test("death_reseeds_from_next_joiner", 100, SharedLifeGameTests::deathReseedsFromNextJoiner),
+            new Test("saved_state_restores_after_reload", 100, SharedLifeGameTests::savedStateRestoresAfterReload));
 
     private NeoForgeGameTests() {
     }

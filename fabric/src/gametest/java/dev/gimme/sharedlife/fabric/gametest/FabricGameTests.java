@@ -101,4 +101,9 @@ public final class FabricGameTests {
     public void deathReseedsFromNextJoiner(GameTestHelper helper) {
         SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
     }
+
+    @GameTest
+    public void savedStateRestoresAfterReload(GameTestHelper helper) {
+        SharedLifeGameTests.savedStateRestoresAfterReload(helper);
+    }
 }

@@ -5,6 +5,7 @@ import dev.gimme.sharedlife.application.ServerHandler;
 import dev.gimme.sharedlife.domain.SharedLife;
 import dev.gimme.sharedlife.domain.config.ServerConfig;
 import dev.gimme.sharedlife.infrastructure.FcapServerConfig;
+import dev.gimme.sharedlife.infrastructure.SharedLifePersistence;
 import net.minecraft.server.MinecraftServer;
 
 public class Main {
@@ -24,6 +25,7 @@ public class Main {
         this.serverConfig = new FcapServerConfig();
 
         SharedLife sharedLife = new SharedLife(server, serverConfig);
+        SharedLifePersistence.attach(sharedLife, server);
         this.playerHandler = new PlayerHandler(sharedLife);
         this.serverHandler = new ServerHandler(sharedLife);
     }

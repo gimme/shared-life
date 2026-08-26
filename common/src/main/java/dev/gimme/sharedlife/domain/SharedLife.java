@@ -24,6 +24,8 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.food.FoodData;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -153,6 +155,29 @@ public class SharedLife {
         previousFoodLevel = foodData.getFoodLevel();
         previousSaturation = foodData.getSaturationLevel();
         previousExperienceLevel = experienceLevel;
+    }
+
+    /**
+     * Writes the shared life state to the given output, to be saved with the world (see
+     * {@code SharedLifePersistence}). Deliberately minimal: the combined-regen timer and the
+     * damage-summary ledger are transient and restart empty.
+     */
+    public void save(ValueOutput output) {
+        output.putFloat("health", getHealth());
+        output.putInt("experienceLevel", experienceLevel);
+        foodData.addAdditionalSaveData(output.child("food"));
+    }
+
+    /**
+     * Restores the shared life state saved with the world, replacing the current state.
+     */
+    public void load(ValueInput input) {
+        setHealth(input.getFloatOr("health", 0));
+        setExperienceLevels(input.getIntOr("experienceLevel", 0));
+        foodData.readAdditionalSaveData(input.childOrEmpty("food"));
+
+        resetPreviousStats();
+        LOG.debug("Loaded shared life saved with the world: {}", this);
     }
 
     public void tick() {

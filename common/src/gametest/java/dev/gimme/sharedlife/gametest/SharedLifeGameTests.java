@@ -6,8 +6,11 @@ import dev.gimme.sharedlife.domain.util.ExtractingValueOutput;
 import dev.gimme.sharedlife.domain.util.FakePlayer;
 import dev.gimme.sharedlife.infrastructure.ConfigTestSupport;
 import dev.gimme.sharedlife.infrastructure.ConfigTestSupport.Scope;
+import dev.gimme.sharedlife.infrastructure.PersistenceTestSupport;
+import dev.gimme.sharedlife.infrastructure.SharedLifePersistence;
 import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket;
@@ -533,6 +536,49 @@ public final class SharedLifeGameTests {
             Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
 
             assertHealth(helper, joiner, 7f); // synced to the survival seed, not the ignored creative one
+        }
+        helper.succeed();
+    }
+
+    // ---- persistence: the shared state is saved with the world ----
+
+    /**
+     * The shared state is attached to the world's data storage at server start, and a saved state
+     * restores over a later one — as across a server restart — with the next tick syncing every player
+     * back to it.
+     */
+    public static void savedStateRestoresAfterReload(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            SharedLifePersistence persistence = PersistenceTestSupport.find(server);
+            helper.assertTrue(persistence != null,
+                    "the shared life should be attached to the world's data storage at server start");
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                a.setHealth(10);
+                seedPoolFrom(a); // pin the pool at 10
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
+
+                CompoundTag saved = PersistenceTestSupport.save(persistence, server);
+
+                b.setHealth(20);
+                seedPoolFrom(b); // a different life takes over, so the restore has something to replace
+
+                PersistenceTestSupport.restore(persistence, saved);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertApproxHealth(helper, a, 10f);
+                assertApproxHealth(helper, b, 10f);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
         }
         helper.succeed();
     }
