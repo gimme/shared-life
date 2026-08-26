@@ -16,8 +16,3 @@ Natural regeneration is a group effort: the shared health only regenerates while
 
 
 ![Logo](images/logo.png)
-
-
-## Credits
-
-Project template used: https://github.com/jaredlll08/MultiLoader-Template
