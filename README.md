@@ -7,12 +7,12 @@ Natural regeneration is a group effort: the shared health only regenerates while
 ### Features
 - Shared health bar.
 - Natural regeneration requires the whole group to stay fed.
-- Shared hunger bar (off by default): a single hunger bar for everyone instead of the group-fed requirement.
-- Shared experience (off by default).
-- Announcement in chat when someone takes damage (including amount and source).
-- Damage summary in chat when the shared life ends, showing how much each player took since it was last at full health.
+- Announcement in chat when someone takes damage, including amount and source.
+- Damage summary in chat when the shared life ends, showing how much damage each player took since it was last at full health.
 
-**Note:** After a server restart, the first player to join will use their current health/hunger to initialize the shared values.
+### Optional Features (off by default)
+- Shared hunger bar.
+- Shared experience.
 
 
 ![Logo](images/logo.png)
