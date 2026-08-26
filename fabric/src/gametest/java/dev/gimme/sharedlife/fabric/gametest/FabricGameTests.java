@@ -31,6 +31,11 @@ public final class FabricGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
+    public void armorReducesSharedDamage(GameTestHelper helper) {
+        SharedLifeGameTests.armorReducesSharedDamage(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
     public void healingRaisesSharedHealth(GameTestHelper helper) {
         SharedLifeGameTests.healingRaisesSharedHealth(helper);
     }

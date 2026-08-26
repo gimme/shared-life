@@ -9,6 +9,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.level.GameType;
 
 import java.util.UUID;
@@ -78,6 +79,45 @@ public final class SharedLifeGameTests {
             sharedLife.includePotentialNewPlayer(joiner);
 
             assertHealth(helper, joiner, 14f);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Armor on the hurt player reduces the damage that reaches the shared pool.
+     *
+     * <p>Unlike the other damage tests, the hit must travel vanilla's real damage path — {@code hurt} →
+     * {@code actuallyHurt}, where armor is applied, → the loader's damage hook — so this test drives the
+     * production {@link Main#INSTANCE} shared life that the hook reports to, re-seeded to a known state
+     * first. Armor equivalent to full iron (15 points, no toughness) against a 9.0 hit:
+     * {@code clamp(15 - 9/2, 3, 20) / 25 = 42%} reduction → 5.22, so the pool drops 20 → 14.78.
+     */
+    public static void armorReducesSharedDamage(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
+            // A FakePlayer is unhurtable by design; restore vulnerability so real damage lands.
+            ServerPlayer victim = new FakePlayer(helper.getLevel(), new GameProfile(UUID.randomUUID(), "TestPlayer")) {
+                @Override
+                public boolean isInvulnerableTo(DamageSource source) {
+                    return false;
+                }
+            };
+            victim.setGameMode(GameType.SURVIVAL);
+            victim.setHealth(20f);
+            clearSpawnInvulnerability(victim);
+
+            Main.INSTANCE.getPlayerHandler().onPlayerDeath(victim);     // force the production pool dead
+            Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(victim); // ...and re-seed it at 20
+
+            // FakePlayers never tick, so worn equipment would not apply its attribute modifiers;
+            // set the armor attribute directly instead. in_fire is armor-reducible and sourceless
+            // (no pvp gating, no difficulty scaling).
+            victim.getAttribute(Attributes.ARMOR).setBaseValue(15);
+            victim.hurt(helper.getLevel().damageSources().inFire(), 9f);
+
+            ServerPlayer joiner = spawnFake(helper, 20f);
+            Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
+
+            assertApproxHealth(helper, joiner, 14.78f); // synced to the armor-reduced pool, not 20 - 9 = 11
         }
         helper.succeed();
     }
@@ -256,5 +296,26 @@ public final class SharedLifeGameTests {
     private static void assertHealth(GameTestHelper helper, ServerPlayer player, float expected) {
         helper.assertTrue(player.getHealth() == expected,
                 "expected shared health " + expected + " but player had " + player.getHealth());
+    }
+
+    /**
+     * Clears vanilla's 60-tick post-spawn invulnerability ({@code ServerPlayer#spawnInvulnerableTime}),
+     * which only counts down in the {@code tick()} that {@link FakePlayer} neuters — without this,
+     * {@code ServerPlayer#hurt} swallows every hit. Private with no setter, hence reflection; game tests
+     * only run in dev, where both loaders use Mojang names.
+     */
+    private static void clearSpawnInvulnerability(ServerPlayer player) {
+        try {
+            var field = ServerPlayer.class.getDeclaredField("spawnInvulnerableTime");
+            field.setAccessible(true);
+            field.setInt(player, 0);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("could not clear spawn invulnerability", e);
+        }
+    }
+
+    private static void assertApproxHealth(GameTestHelper helper, ServerPlayer player, float expected) {
+        helper.assertTrue(Math.abs(player.getHealth() - expected) < 0.01f,
+                "expected shared health ~" + expected + " but player had " + player.getHealth());
     }
 }

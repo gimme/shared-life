@@ -6,21 +6,25 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 
 /**
  * Lets the mod know when a player is damaged.
+ *
+ * <p>Anchored on the {@code CombatTracker.recordDamage} call in {@code actuallyHurt} because its argument is the
+ * final health-reducing damage (armor, enchantments and absorption applied) that carries those same semantics
+ * in both vanilla and NeoForge's reshaped bytecode.
  */
 @Mixin(Player.class)
 public class MixinPlayerDamage {
 
-    @ModifyVariable(method = "actuallyHurt", at = @At(value= "INVOKE_ASSIGN", target = "Ljava/lang/Math;max(FF)F", ordinal = 0), ordinal = 0, argsOnly = true, require = 1)
-    private float applySharedDamage(float g, DamageSource source, float damage) {
+    @ModifyArg(method = "actuallyHurt", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/damagesource/CombatTracker;recordDamage(Lnet/minecraft/world/damagesource/DamageSource;F)V"), index = 1, require = 1)
+    private float applySharedDamage(DamageSource source, float damage) {
         Player instance = (Player) (Object) this;
         if (instance instanceof ServerPlayer serverPlayer) {
-            Main.INSTANCE.getPlayerHandler().onPlayerDamage(serverPlayer, source, g);
+            Main.INSTANCE.getPlayerHandler().onPlayerDamage(serverPlayer, source, damage);
         }
 
-        return g;
+        return damage;
     }
 }

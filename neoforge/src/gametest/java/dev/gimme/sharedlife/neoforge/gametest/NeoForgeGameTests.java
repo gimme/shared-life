@@ -38,6 +38,11 @@ public final class NeoForgeGameTests {
     }
 
     @GameTest(template = EMPTY)
+    public void armorReducesSharedDamage(GameTestHelper helper) {
+        SharedLifeGameTests.armorReducesSharedDamage(helper);
+    }
+
+    @GameTest(template = EMPTY)
     public void healingRaisesSharedHealth(GameTestHelper helper) {
         SharedLifeGameTests.healingRaisesSharedHealth(helper);
     }
