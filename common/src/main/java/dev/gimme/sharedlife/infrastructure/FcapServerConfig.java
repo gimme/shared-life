@@ -39,12 +39,11 @@ public class FcapServerConfig extends ServerConfig {
                 .define("shareHunger", false);
 
         COMBINE_NATURAL_REGENERATION = builder
-                .comment("If natural regeneration should run once for the whole group instead of once per fed player, when hunger is not shared."
-                        + " The shared health then heals at the rate of a single player, only while every player meets the vanilla regeneration conditions"
-                        + " (everyone fed enough to heal; fast regeneration needs everyone at full hunger with saturation),"
-                        + " and each heal drains hunger from all players."
-                        + " If disabled, each player's own natural regeneration is added to the shared health separately."
-                        + " Ignored when shareHunger is enabled: the single shared hunger bar already gates regeneration for everyone.")
+                .comment("""
+                    If natural regeneration should be a group effort.
+                    With this, the shared life regenerates only while every player stays fed, and everyone pays the same hunger cost.
+                    If disabled, each fed player's own regeneration heals the shared life separately, which can be quite strong.
+                    Has no effect when shareHunger is enabled, because it already works like that.""")
                 .define("combineNaturalRegeneration", true);
 
         SHARE_EXPERIENCE = builder
