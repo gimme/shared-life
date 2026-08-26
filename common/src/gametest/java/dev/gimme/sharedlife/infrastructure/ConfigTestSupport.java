@@ -22,9 +22,7 @@ public final class ConfigTestSupport {
     private ConfigTestSupport() {
     }
 
-    /**
-     * A restore handle whose {@code close()} throws nothing, so it reads cleanly in try-with-resources.
-     */
+    /** A restore handle whose {@code close()} throws nothing, so it reads cleanly in try-with-resources. */
     public interface Scope extends AutoCloseable {
         @Override
         void close();

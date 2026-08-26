@@ -6,12 +6,9 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 /**
- * Fabric test wiring, scanned via the {@code fabric-gametest} entrypoint. One {@link GameTest}
- * delegate per shared test. Implementing {@link FabricGameTest} gives each test the API's built-in
- * empty 8x8x8 structure ({@link FabricGameTest#EMPTY_STRUCTURE}), so no template resource is needed.
- *
- * <p>Methods are instance methods invoked on a fresh instance, so this class needs a public no-arg
- * constructor (the implicit default suffices).
+ * Fabric test wiring, scanned via the {@code fabric-gametest} entrypoint: one {@link GameTest} delegate
+ * per shared test, run on the API's built-in {@link FabricGameTest#EMPTY_STRUCTURE}. Instantiated
+ * reflectively, so the implicit public no-arg constructor must stay.
  */
 public final class FabricGameTests implements FabricGameTest {
 
@@ -75,9 +72,7 @@ public final class FabricGameTests implements FabricGameTest {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }
 
-    // The one real-tick test: isolated in its own batch so it never runs concurrently with a test
-    // that re-seeds the global pool while its players sit in the player list across a tick boundary.
-    // Batches run strictly one after another, so nothing else executes during its awaited ticks.
+    // The one real-tick test: its own batch, so nothing else runs while its players await a real tick.
     @GameTest(template = EMPTY_STRUCTURE, batch = "serverTickHook")
     public void serverTickHookIsWired(GameTestHelper helper) {
         SharedLifeGameTests.serverTickHookIsWired(helper);

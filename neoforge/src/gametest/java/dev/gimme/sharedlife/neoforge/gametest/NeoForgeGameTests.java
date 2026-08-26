@@ -8,13 +8,9 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 
 /**
- * NeoForge test wiring. {@link GameTestHolder} auto-registers every {@link GameTest} method in this
- * class under the mod's namespace (enabled via the {@code neoforge.enabledGameTestNamespaces} run
- * property), so {@code main} never references this dev-only source set. One delegate per shared test.
- *
- * <p>{@link PrefixGameTestTemplate}(false) keeps template names unprefixed, so every test resolves to
- * the single {@code sharedlife:empty} structure shipped under this source set's resources. Methods are
- * invoked on a fresh instance, so this class needs a public no-arg constructor (the implicit default).
+ * NeoForge test wiring: {@link GameTestHolder} auto-registers every {@link GameTest} method under the
+ * mod's namespace, one delegate per shared test. {@link PrefixGameTestTemplate}(false) keeps template
+ * names unprefixed so they resolve to the {@code sharedlife:empty} structure in this source set.
  */
 @GameTestHolder(Constants.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -82,9 +78,7 @@ public final class NeoForgeGameTests {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }
 
-    // The one real-tick test: isolated in its own batch so it never runs concurrently with a test
-    // that re-seeds the global pool while its players sit in the player list across a tick boundary.
-    // Batches run strictly one after another, so nothing else executes during its awaited ticks.
+    // The one real-tick test: its own batch, so nothing else runs while its players await a real tick.
     @GameTest(template = EMPTY, batch = "serverTickHook")
     public void serverTickHookIsWired(GameTestHelper helper) {
         SharedLifeGameTests.serverTickHookIsWired(helper);
