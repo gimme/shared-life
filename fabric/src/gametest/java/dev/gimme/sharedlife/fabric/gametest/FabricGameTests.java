@@ -23,6 +23,11 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void armorReducesSharedDamage(GameTestHelper helper) {
+        SharedLifeGameTests.armorReducesSharedDamage(helper);
+    }
+
+    @GameTest
     public void healingSyncsAcrossRealPlayers(GameTestHelper helper) {
         SharedLifeGameTests.healingSyncsAcrossRealPlayers(helper);
     }

@@ -41,6 +41,7 @@ public final class NeoForgeGameTests {
     // Test names become resource-location paths, so they must be snake_case ([a-z0-9/._-] only).
     private static final List<Test> TESTS = List.of(
             new Test("damage_syncs_across_real_players", 100, SharedLifeGameTests::damageSyncsAcrossRealPlayers),
+            new Test("armor_reduces_shared_damage", 100, SharedLifeGameTests::armorReducesSharedDamage),
             new Test("healing_syncs_across_real_players", 100, SharedLifeGameTests::healingSyncsAcrossRealPlayers),
             new Test("death_cascades_to_all_players", 100, SharedLifeGameTests::deathCascadesToAllPlayers),
             new Test("totem_revives_shared_life", 100, SharedLifeGameTests::totemRevivesSharedLife),

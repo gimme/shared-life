@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
@@ -106,6 +107,45 @@ public final class SharedLifeGameTests {
 
                 assertApproxHealth(helper, a, 14f); // took the blow directly
                 assertApproxHealth(helper, b, 14f); // synced down across the shared pool
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Armor on the hurt player reduces the damage that reaches the shared pool.
+     *
+     * <p>Vanilla applies the victim's armor inside {@code Player.actuallyHurt}, before the loader's damage
+     * hook reports the loss — so the pool must drop by the reduced amount, not the raw swing. Full iron
+     * armor (15 points, no toughness) against a 9.0 hit (a stone axe swing) reduces it by
+     * {@code clamp(15 - 9/2, 3, 20) / 25 = 42%} to 5.22, taking the pool from 20 to 14.78.
+     */
+    public static void armorReducesSharedDamage(GameTestHelper helper) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper); // isolate from earlier tests so the spawns below start clean
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                // The spawns above already seeded the pool at 20 from A and synced B to it.
+                a.setItemSlot(EquipmentSlot.HEAD, new ItemStack(Items.IRON_HELMET));
+                a.setItemSlot(EquipmentSlot.CHEST, new ItemStack(Items.IRON_CHESTPLATE));
+                a.setItemSlot(EquipmentSlot.LEGS, new ItemStack(Items.IRON_LEGGINGS));
+                a.setItemSlot(EquipmentSlot.FEET, new ItemStack(Items.IRON_BOOTS));
+                a.doTick(); // equipment attribute modifiers (the armor points) only apply on the entity's tick
+                helper.assertTrue(a.getArmorValue() == 15, "full iron armor should give 15 armor points, but A had " + a.getArmorValue());
+
+                a.invulnerableTime = 0;
+                a.hurtServer(helper.getLevel(), helper.getLevel().damageSources().playerAttack(b), 9f);
+
+                Main.INSTANCE.getServerHandler().onServerTick(); // broadcasts the pool over getPlayerList()
+
+                assertApproxHealth(helper, a, 14.78f); // took the armor-reduced 5.22, not the raw 9
+                assertApproxHealth(helper, b, 14.78f); // synced down by the reduced amount too
             } finally {
                 removeRealPlayers(helper, a, b);
             }
