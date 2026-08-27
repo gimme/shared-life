@@ -27,40 +27,40 @@ public class FcapServerConfig extends ServerConfig {
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         SHARE_HEALTH = builder
-                .comment("If health should be shared among players")
-                .define("shareHealth", true);
-
-        SHARE_DEATH = builder
-                .comment("If all players should die when one player dies. This is implicitly enabled if shareHealth is enabled.")
-                .define("shareDeath", true);
+            .comment("If health should be shared among players")
+            .define("shareHealth", true);
 
         SHARE_HUNGER = builder
-                .comment("If hunger should be shared among players")
-                .define("shareHunger", false);
+            .comment("If hunger should be shared among players")
+            .define("shareHunger", false);
 
         COMBINE_NATURAL_REGENERATION = builder
-                .comment("""
-                    If natural regeneration should be a group effort.
-                    With this, the shared life regenerates only while every player stays fed, and everyone pays the same hunger cost.
-                    If disabled, each fed player's own regeneration heals the shared life separately, which can be quite strong.
-                    Has no effect when shareHunger is enabled, because it already works like that.""")
-                .define("combineNaturalRegeneration", true);
+            .comment("""
+                If natural regeneration should be a group effort.
+                With this, the shared life regenerates only while every player stays fed, and everyone pays the same hunger cost.
+                If disabled, each fed player's own regeneration heals the shared life separately, which can be quite strong.
+                Has no effect when shareHunger is enabled, because it already works like that.""")
+            .define("combineNaturalRegeneration", true);
 
         SHARE_EXPERIENCE = builder
-                .comment("If experience should be shared among players")
-                .define("shareExperience", false);
+            .comment("If experience should be shared among players")
+            .define("shareExperience", false);
+
+        SHARE_DEATH = builder
+            .comment("If all players should die when one player dies. This implicitly happens if shareHealth is enabled.")
+            .define("shareDeath", false);
 
         ANNOUNCE_DAMAGE = builder
-                .comment("If damage events should be announced in chat")
-                .define("announceDamage", true);
+            .comment("If damage events should be announced in chat")
+            .define("announceDamage", true);
 
         INCLUDE_DAMAGE_SOURCE = builder
-                .comment("If the source of the damage should be included in announcements")
-                .define("includeDamageSource", true);
+            .comment("If the source of the damage should be included in announcements")
+            .define("includeDamageSource", true);
 
         ANNOUNCE_DEATH_SUMMARY = builder
-                .comment("If a summary of how much damage each player took should be announced in chat when the shared life ends")
-                .define("announceDeathSummary", true);
+            .comment("If a summary of how much damage each player took should be announced in chat when the shared life ends")
+            .define("announceDeathSummary", true);
 
         SPEC = builder.build();
     }
