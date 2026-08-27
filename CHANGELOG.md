@@ -7,14 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.21.1-0.3.0] - 2026-08-27
+
 ### Added
 
+- Combined natural regeneration (`combineNaturalRegeneration`, enabled by default, applies while
+  hunger is not shared): the shared health heals at the rate of a single player, only while every
+  player meets the vanilla regeneration conditions (fast regeneration needs everyone at full hunger
+  with saturation), and each heal drains hunger from all players. Previously, each fed player's own
+  regeneration was added to the shared health separately, so players in safety could out-heal the
+  danger the rest of the group was in.
+- A concise chat summary of how much damage each player took since the shared health was last full,
+  shown when the shared life ends. Disable with `announceDeathSummary`.
 - The shared life is now saved with the world: a restart resumes the shared health (and hunger and
   experience, while shared) where it left off, instead of re-seeding it from a player. Seeding now
   only starts a genuinely new life — a fresh world, or the respawn after a shared death.
 
 ### Changed
 
+- `shareHunger` now defaults to disabled, making everyone keeping their own hunger topped up (see
+  `combineNaturalRegeneration`) the default experience. Existing config files keep their saved
+  value.
 - `shareDeath` now defaults to disabled. Death sharing still implicitly applies while `shareHealth`
   is enabled, so the default experience is unchanged; existing config files keep their saved value.
 
@@ -27,25 +40,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed switching out of creative or spectator mode not joining the player into the shared life:
   they now sync onto the live shared health — or re-seed it from their own state after a total
   death — the same way joining the server does.
-
-## [v1.21.1-0.2.1] - 2026-08-26
-
-### Added
-
-- Combined natural regeneration (`combineNaturalRegeneration`, enabled by default, applies while
-  hunger is not shared): the shared health heals at the rate of a single player, only while every
-  player meets the vanilla regeneration conditions (fast regeneration needs everyone at full hunger
-  with saturation), and each heal drains hunger from all players. Previously, each fed player's own
-  regeneration was added to the shared health separately, so players in safety could out-heal the
-  danger the rest of the group was in.
-- A concise chat summary of how much damage each player took since the shared health was last full,
-  shown when the shared life ends. Disable with `announceDeathSummary`.
-
-### Changed
-
-- `shareHunger` now defaults to disabled, making everyone keeping their own hunger topped up (see
-  `combineNaturalRegeneration`) the default experience. Existing config files keep their saved
-  value.
+- Fixed a new shared life inheriting the previous life's residual exhaustion and hidden
+  regeneration timer: the shared food state now starts fresh, seeded only from the re-seeding
+  player's food level and saturation.
 
 ## [v1.21.1-0.1.7] - 2026-08-26
 
