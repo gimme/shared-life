@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v26.2-0.3.0] - 2026-08-27
+
 ### Added
 
 - The shared life is now saved with the world: a restart resumes the shared health (and hunger and
@@ -27,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed switching out of creative or spectator mode not joining the player into the shared life:
   they now sync onto the live shared health — or re-seed it from their own state after a total
   death — the same way joining the server does.
+- Fixed a new shared life inheriting the previous life's residual exhaustion and hidden
+  regeneration timer: the shared food state now starts fresh, seeded only from the re-seeding
+  player's food level and saturation.
 
 ## [v26.2-0.2.1] - 2026-08-26
 
