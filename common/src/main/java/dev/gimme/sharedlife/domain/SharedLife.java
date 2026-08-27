@@ -47,7 +47,7 @@ public class SharedLife {
     private final DamageSource damageSource;
     private final Heart heart;
 
-    private final FoodData foodData = new FoodData();
+    private FoodData foodData = new FoodData();
 
     /**
      * Runs vanilla's natural regeneration once for the whole group (see {@link #tickCombinedNaturalRegen}).
@@ -139,6 +139,9 @@ public class SharedLife {
         setHealth(player.getHealth());
         setExperienceLevels(player.experienceLevel);
 
+        // A fresh FoodData, not the old life's: its residual exhaustion (anything still under
+        // vanilla's 4-point drain threshold) and hidden regeneration timer must not carry over.
+        foodData = new FoodData();
         foodData.setFoodLevel(player.getFoodData().getFoodLevel());
         foodData.setSaturation(player.getFoodData().getSaturationLevel());
         foodData.addExhaustion(getExhaustionLevel(player.getFoodData()));
