@@ -3,7 +3,6 @@ package dev.gimme.sharedlife.application;
 import dev.gimme.sharedlife.domain.SharedLife;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.level.GameType;
 import org.jetbrains.annotations.NotNull;
 
 public class PlayerHandler {
@@ -18,8 +17,12 @@ public class PlayerHandler {
         sharedLife.includePotentialNewPlayer(player);
     }
 
-    public void onPlayerChangeGameMode(@NotNull ServerPlayer player, GameType newGameMode) {
-        if (newGameMode == GameType.SPECTATOR || newGameMode == GameType.CREATIVE) return;
+    /**
+     * Must fire after the new mode is applied (see {@code MixinPlayerChangeGameMode}): the shared
+     * life reads the player's live mode to decide whether they are ethereal, so a switch into
+     * survival joins them in and a switch into creative/spectator is ignored.
+     */
+    public void onPlayerChangeGameMode(@NotNull ServerPlayer player) {
         sharedLife.includePotentialNewPlayer(player);
     }
 

@@ -679,10 +679,8 @@ public final class SharedLifeGameTests {
 
     /**
      * Switching from creative into survival must sync the player onto the live shared pool, the same
-     * way joining the level does.
-     *
-     * <p>Known red: on both loaders the game-mode-change hook runs before the mode actually changes,
-     * so the player still reads as ethereal and the sync is skipped.
+     * way joining the level does — via the mod's post-change hook (see {@code MixinPlayerChangeGameMode}),
+     * so the player no longer reads as ethereal.
      */
     public static void survivalSwitchJoinsSharedLife(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
@@ -752,9 +750,6 @@ public final class SharedLifeGameTests {
     /**
      * After a total death, a creative player switching into survival must re-seed the dead pool from
      * their own state, just like the next player to join does.
-     *
-     * <p>Known red: same cause as {@link #survivalSwitchJoinsSharedLife}, so the pool stays dead and
-     * the next joiner seeds it instead.
      */
     public static void survivalSwitchReseedsDeadPool(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
@@ -1167,7 +1162,7 @@ public final class SharedLifeGameTests {
     private static ServerPlayer spawnFake(GameTestHelper helper, float health) {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = new FakePlayer(level, new GameProfile(UUID.randomUUID(), "TestPlayer"));
-        // Deliberately no setGameMode: it fires the loaders' change-game-mode hook, which would pull
+        // Deliberately no setGameMode: it fires the real change-game-mode hook, which would pull
         // this half-initialized fake into the production pool.
         player.setHealth(health);
         return player;

@@ -129,8 +129,7 @@ public final class NeoForgeGameTests {
         SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
     }
 
-    // Known red (see the shared test's doc): optional until the fix lands.
-    @GameTest(template = EMPTY, required = false)
+    @GameTest(template = EMPTY)
     public void survivalSwitchJoinsSharedLife(GameTestHelper helper) {
         SharedLifeGameTests.survivalSwitchJoinsSharedLife(helper);
     }
@@ -145,8 +144,7 @@ public final class NeoForgeGameTests {
         SharedLifeGameTests.etherealPlayersExcludedFromTickSync(helper);
     }
 
-    // Known red (see the shared test's doc): optional until the fix lands.
-    @GameTest(template = EMPTY, required = false)
+    @GameTest(template = EMPTY)
     public void survivalSwitchReseedsDeadPool(GameTestHelper helper) {
         SharedLifeGameTests.survivalSwitchReseedsDeadPool(helper);
     }
