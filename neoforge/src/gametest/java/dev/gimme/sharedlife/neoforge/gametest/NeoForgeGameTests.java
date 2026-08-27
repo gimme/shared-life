@@ -78,6 +78,11 @@ public final class NeoForgeGameTests {
     }
 
     @GameTest(template = EMPTY)
+    public void exhaustionPoolsIntoSharedHunger(GameTestHelper helper) {
+        SharedLifeGameTests.exhaustionPoolsIntoSharedHunger(helper);
+    }
+
+    @GameTest(template = EMPTY)
     public void starvationHurtsAllPlayers(GameTestHelper helper) {
         SharedLifeGameTests.starvationHurtsAllPlayers(helper);
     }
