@@ -52,6 +52,7 @@ public final class NeoForgeGameTests {
             new Test("share_death_cascades_without_shared_health", 100, SharedLifeGameTests::shareDeathCascadesWithoutSharedHealth),
             new Test("death_not_shared_when_disabled", 100, SharedLifeGameTests::deathNotSharedWhenDisabled),
             new Test("hunger_syncs_across_real_players", 100, SharedLifeGameTests::hungerSyncsAcrossRealPlayers),
+            new Test("exhaustion_pools_into_shared_hunger", 100, SharedLifeGameTests::exhaustionPoolsIntoSharedHunger),
             new Test("starvation_hurts_all_players", 100, SharedLifeGameTests::starvationHurtsAllPlayers),
             new Test("combined_regen_heals_when_all_fed", 100, SharedLifeGameTests::combinedRegenHealsWhenAllFed),
             new Test("combined_regen_blocked_while_anyone_hungry", 100, SharedLifeGameTests::combinedRegenBlockedWhileAnyoneHungry),

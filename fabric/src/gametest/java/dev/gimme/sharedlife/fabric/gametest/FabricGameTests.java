@@ -70,6 +70,11 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void exhaustionPoolsIntoSharedHunger(GameTestHelper helper) {
+        SharedLifeGameTests.exhaustionPoolsIntoSharedHunger(helper);
+    }
+
+    @GameTest
     public void starvationHurtsAllPlayers(GameTestHelper helper) {
         SharedLifeGameTests.starvationHurtsAllPlayers(helper);
     }

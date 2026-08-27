@@ -375,6 +375,38 @@ public final class SharedLifeGameTests {
     }
 
     /**
+     * One player's exertion (sprinting, jumping) pools into the shared hunger: the shared saturation
+     * pays for it once, for everyone — and the absorbed exhaustion is not re-counted on later ticks.
+     */
+    public static void exhaustionPoolsIntoSharedHunger(GameTestHelper helper) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                a.getFoodData().addExhaustion(5f); // as from sprinting: over vanilla's 4-point threshold
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertFood(helper, a, 20, 4f); // the shared saturation (spawned at 5) paid one point...
+                assertFood(helper, b, 20, 4f); // ...for the whole group
+                assertExhaustion(helper, a, 0f); // the player's own exhaustion was absorbed into the pool
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertFood(helper, a, 20, 4f); // absorbed once, not re-counted as a fresh change
+                assertFood(helper, b, 20, 4f);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
      * When the shared food empties, the shared heart starves and every player takes the damage — as
      * {@code shared_life} damage, which bypasses invulnerability, so both take it on the same tick.
      */
@@ -851,7 +883,7 @@ public final class SharedLifeGameTests {
                 seedPoolFrom(a); // pin the pool at 10
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
 
-                CompoundTag saved = PersistenceTestSupport.save(persistence, server);
+                CompoundTag saved = PersistenceTestSupport.save(persistence);
 
                 b.setHealth(20);
                 seedPoolFrom(b); // a different life takes over, so the restore has something to replace
@@ -893,7 +925,7 @@ public final class SharedLifeGameTests {
                 seedPoolFrom(a); // pool: health 10, food 12, saturation 2.0, 4 levels
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
 
-                CompoundTag saved = PersistenceTestSupport.save(persistence, server);
+                CompoundTag saved = PersistenceTestSupport.save(persistence);
 
                 b.setHealth(20);
                 setFood(b, 20, 0f);
@@ -1168,8 +1200,8 @@ public final class SharedLifeGameTests {
                 assertion.run();
             } finally {
                 cleanup.run();
-                for (Scope scope : scopes) {
-                    scope.close();
+                for (int i = scopes.length - 1; i >= 0; i--) { // reverse order, like try-with-resources
+                    scopes[i].close();
                 }
             }
             helper.succeed();

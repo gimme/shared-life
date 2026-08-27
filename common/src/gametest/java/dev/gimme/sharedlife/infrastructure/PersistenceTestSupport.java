@@ -35,7 +35,7 @@ public final class PersistenceTestSupport {
     }
 
     /** Saves the live shared state the way a world save does. */
-    public static CompoundTag save(SharedLifePersistence persistence, MinecraftServer server) {
+    public static CompoundTag save(SharedLifePersistence persistence) {
         return persistence.saveToTag();
     }
 
