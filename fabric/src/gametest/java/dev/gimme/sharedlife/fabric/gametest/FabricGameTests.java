@@ -77,6 +77,11 @@ public final class FabricGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
+    public void deathClearsPooledExhaustion(GameTestHelper helper) {
+        SharedLifeGameTests.deathClearsPooledExhaustion(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
     public void starvationHurtsAllPlayers(GameTestHelper helper) {
         SharedLifeGameTests.starvationHurtsAllPlayers(helper);
     }
