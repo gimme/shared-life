@@ -13,6 +13,7 @@ Natural regeneration is a group effort: the shared health only regenerates while
 ### Optional Features (off by default)
 - Shared hunger bar.
 - Shared experience.
+- Sharing death only: one player's death kills everyone, without sharing health.
 
 
 ![Logo](images/logo.png)
