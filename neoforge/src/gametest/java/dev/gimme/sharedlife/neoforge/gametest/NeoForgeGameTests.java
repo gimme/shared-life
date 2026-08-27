@@ -2,6 +2,7 @@ package dev.gimme.sharedlife.neoforge.gametest;
 
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import dev.gimme.sharedlife.domain.util.Constants;
 import dev.gimme.sharedlife.gametest.SharedLifeGameTests;
@@ -47,7 +48,9 @@ public final class NeoForgeGameTests {
             new Test("heal_cannot_revive_dead_pool", 100, SharedLifeGameTests::healCannotReviveDeadPool),
             new Test("death_cascades_to_all_players", 100, SharedLifeGameTests::deathCascadesToAllPlayers),
             new Test("totem_revives_shared_life", 100, SharedLifeGameTests::totemRevivesSharedLife),
+            new Test("totem_does_not_save_cascaded_players", 100, SharedLifeGameTests::totemDoesNotSaveCascadedPlayers),
             new Test("share_death_cascades_without_shared_health", 100, SharedLifeGameTests::shareDeathCascadesWithoutSharedHealth),
+            new Test("death_not_shared_when_disabled", 100, SharedLifeGameTests::deathNotSharedWhenDisabled),
             new Test("hunger_syncs_across_real_players", 100, SharedLifeGameTests::hungerSyncsAcrossRealPlayers),
             new Test("starvation_hurts_all_players", 100, SharedLifeGameTests::starvationHurtsAllPlayers),
             new Test("combined_regen_heals_when_all_fed", 100, SharedLifeGameTests::combinedRegenHealsWhenAllFed),
@@ -68,14 +71,22 @@ public final class NeoForgeGameTests {
             new Test("ethereal_players_excluded_from_tick_sync", 100, SharedLifeGameTests::etherealPlayersExcludedFromTickSync),
             new Test("survival_switch_reseeds_dead_pool", 100, SharedLifeGameTests::survivalSwitchReseedsDeadPool),
             new Test("saved_state_restores_after_reload", 100, SharedLifeGameTests::savedStateRestoresAfterReload),
+            new Test("saved_state_restores_hunger_and_experience", 100, SharedLifeGameTests::savedStateRestoresHungerAndExperience),
             new Test("damage_message_announced_with_source", 100, SharedLifeGameTests::damageMessageAnnouncedWithSource),
             new Test("damage_message_silenced_when_disabled", 100, SharedLifeGameTests::damageMessageSilencedWhenDisabled),
             new Test("damage_message_omits_source_when_disabled", 100, SharedLifeGameTests::damageMessageOmitsSourceWhenDisabled),
             new Test("death_summary_announced_on_shared_death", 100, SharedLifeGameTests::deathSummaryAnnouncedOnSharedDeath),
             new Test("death_summary_counts_since_last_full_health", 100, SharedLifeGameTests::deathSummaryCountsSinceLastFullHealth),
-            new Test("death_summary_silenced_when_disabled", 100, SharedLifeGameTests::deathSummarySilencedWhenDisabled));
+            new Test("death_summary_silenced_when_disabled", 100, SharedLifeGameTests::deathSummarySilencedWhenDisabled),
+            new Test("all_shared_tests_registered", 100, NeoForgeGameTests::allSharedTestsRegistered));
 
     private NeoForgeGameTests() {
+    }
+
+    /** Wiring guard: every shared test body must have an entry in {@link #TESTS} (as the snake_case of its name). */
+    private static void allSharedTestsRegistered(GameTestHelper helper) {
+        SharedLifeGameTests.allSharedTestsRegistered(helper,
+                TESTS.stream().map(Test::name).collect(Collectors.toSet()));
     }
 
     @SubscribeEvent

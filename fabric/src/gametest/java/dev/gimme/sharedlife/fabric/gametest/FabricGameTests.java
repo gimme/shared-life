@@ -4,6 +4,10 @@ import dev.gimme.sharedlife.gametest.SharedLifeGameTests;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 /**
  * Fabric test wiring, scanned via the {@code fabric-gametest} entrypoint: one {@link GameTest} delegate
  * per shared test, on Fabric API's built-in empty 8x8x8 structure.
@@ -46,8 +50,18 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void totemDoesNotSaveCascadedPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.totemDoesNotSaveCascadedPlayers(helper);
+    }
+
+    @GameTest
     public void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
         SharedLifeGameTests.shareDeathCascadesWithoutSharedHealth(helper);
+    }
+
+    @GameTest
+    public void deathNotSharedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.deathNotSharedWhenDisabled(helper);
     }
 
     @GameTest
@@ -148,6 +162,11 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void savedStateRestoresHungerAndExperience(GameTestHelper helper) {
+        SharedLifeGameTests.savedStateRestoresHungerAndExperience(helper);
+    }
+
+    @GameTest
     public void damageMessageAnnouncedWithSource(GameTestHelper helper) {
         SharedLifeGameTests.damageMessageAnnouncedWithSource(helper);
     }
@@ -175,5 +194,15 @@ public final class FabricGameTests {
     @GameTest
     public void deathSummarySilencedWhenDisabled(GameTestHelper helper) {
         SharedLifeGameTests.deathSummarySilencedWhenDisabled(helper);
+    }
+
+    /** Wiring guard: every shared test body must have a delegate in this class. */
+    @GameTest
+    public void allSharedTestsRegistered(GameTestHelper helper) {
+        SharedLifeGameTests.allSharedTestsRegistered(helper,
+                Arrays.stream(FabricGameTests.class.getDeclaredMethods())
+                        .filter(method -> method.isAnnotationPresent(GameTest.class))
+                        .map(Method::getName)
+                        .collect(Collectors.toSet()));
     }
 }
