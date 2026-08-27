@@ -15,5 +15,8 @@ Natural regeneration is a group effort: the shared health only regenerates while
 - Shared experience.
 - Sharing death only: one player's death kills everyone, without sharing health.
 
+### Version Support
+This is a hobby project developed on a best-effort basis. When updates happen, they target the latest Minecraft release and 1.21.1. Other versions keep their existing builds but probably won't receive fixes.
+
 
 ![Logo](images/logo.png)
