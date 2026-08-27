@@ -21,8 +21,18 @@ public final class FabricGameTests {
     }
 
     @GameTest
+    public void absorptionAbsorbsSharedDamage(GameTestHelper helper) {
+        SharedLifeGameTests.absorptionAbsorbsSharedDamage(helper);
+    }
+
+    @GameTest
     public void healingSyncsAcrossRealPlayers(GameTestHelper helper) {
         SharedLifeGameTests.healingSyncsAcrossRealPlayers(helper);
+    }
+
+    @GameTest
+    public void healCannotReviveDeadPool(GameTestHelper helper) {
+        SharedLifeGameTests.healCannotReviveDeadPool(helper);
     }
 
     @GameTest
@@ -33,6 +43,12 @@ public final class FabricGameTests {
     @GameTest
     public void totemRevivesSharedLife(GameTestHelper helper) {
         SharedLifeGameTests.totemRevivesSharedLife(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(required = false)
+    public void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
+        SharedLifeGameTests.shareDeathCascadesWithoutSharedHealth(helper);
     }
 
     @GameTest
@@ -70,6 +86,11 @@ public final class FabricGameTests {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }
 
+    @GameTest
+    public void experienceSpendingSyncsAcrossRealPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.experienceSpendingSyncsAcrossRealPlayers(helper);
+    }
+
     // The one real-tick test: its own environment (defined under data/sharedlife/test_environment)
     // keeps it in a sequential batch of its own.
     @GameTest(environment = "sharedlife:env/server_tick_hook_is_wired")
@@ -102,8 +123,62 @@ public final class FabricGameTests {
         SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
     }
 
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(required = false)
+    public void survivalSwitchJoinsSharedLife(GameTestHelper helper) {
+        SharedLifeGameTests.survivalSwitchJoinsSharedLife(helper);
+    }
+
+    @GameTest
+    public void creativeSwitchLeavesPoolUntouched(GameTestHelper helper) {
+        SharedLifeGameTests.creativeSwitchLeavesPoolUntouched(helper);
+    }
+
+    @GameTest
+    public void etherealPlayersExcludedFromTickSync(GameTestHelper helper) {
+        SharedLifeGameTests.etherealPlayersExcludedFromTickSync(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(required = false)
+    public void survivalSwitchReseedsDeadPool(GameTestHelper helper) {
+        SharedLifeGameTests.survivalSwitchReseedsDeadPool(helper);
+    }
+
     @GameTest
     public void savedStateRestoresAfterReload(GameTestHelper helper) {
         SharedLifeGameTests.savedStateRestoresAfterReload(helper);
+    }
+
+    @GameTest
+    public void damageMessageAnnouncedWithSource(GameTestHelper helper) {
+        SharedLifeGameTests.damageMessageAnnouncedWithSource(helper);
+    }
+
+    @GameTest
+    public void damageMessageSilencedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.damageMessageSilencedWhenDisabled(helper);
+    }
+
+    @GameTest
+    public void damageMessageOmitsSourceWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.damageMessageOmitsSourceWhenDisabled(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(required = false)
+    public void deathSummaryAnnouncedOnSharedDeath(GameTestHelper helper) {
+        SharedLifeGameTests.deathSummaryAnnouncedOnSharedDeath(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(required = false)
+    public void deathSummaryCountsSinceLastFullHealth(GameTestHelper helper) {
+        SharedLifeGameTests.deathSummaryCountsSinceLastFullHealth(helper);
+    }
+
+    @GameTest
+    public void deathSummarySilencedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.deathSummarySilencedWhenDisabled(helper);
     }
 }

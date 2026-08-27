@@ -42,9 +42,13 @@ public final class NeoForgeGameTests {
     private static final List<Test> TESTS = List.of(
             new Test("damage_syncs_across_real_players", 100, SharedLifeGameTests::damageSyncsAcrossRealPlayers),
             new Test("armor_reduces_shared_damage", 100, SharedLifeGameTests::armorReducesSharedDamage),
+            new Test("absorption_absorbs_shared_damage", 100, SharedLifeGameTests::absorptionAbsorbsSharedDamage),
             new Test("healing_syncs_across_real_players", 100, SharedLifeGameTests::healingSyncsAcrossRealPlayers),
+            new Test("heal_cannot_revive_dead_pool", 100, SharedLifeGameTests::healCannotReviveDeadPool),
             new Test("death_cascades_to_all_players", 100, SharedLifeGameTests::deathCascadesToAllPlayers),
             new Test("totem_revives_shared_life", 100, SharedLifeGameTests::totemRevivesSharedLife),
+            // Known red (see the shared tests' docs): registered as not required until the fixes land.
+            new Test("share_death_cascades_without_shared_health", 100, false, false, SharedLifeGameTests::shareDeathCascadesWithoutSharedHealth),
             new Test("hunger_syncs_across_real_players", 100, SharedLifeGameTests::hungerSyncsAcrossRealPlayers),
             new Test("starvation_hurts_all_players", 100, SharedLifeGameTests::starvationHurtsAllPlayers),
             new Test("combined_regen_heals_when_all_fed", 100, SharedLifeGameTests::combinedRegenHealsWhenAllFed),
@@ -52,6 +56,7 @@ public final class NeoForgeGameTests {
             new Test("combined_regen_fast_only_when_all_saturated", 100, SharedLifeGameTests::combinedRegenFastOnlyWhenAllSaturated),
             new Test("individual_regen_suppressed_when_combined", 100, SharedLifeGameTests::individualRegenSuppressedWhenCombined),
             new Test("experience_syncs_across_real_players", 100, SharedLifeGameTests::experienceSyncsAcrossRealPlayers),
+            new Test("experience_spending_syncs_across_real_players", 100, SharedLifeGameTests::experienceSpendingSyncsAcrossRealPlayers),
             // The one real-tick test: isolated, so nothing else runs while its players await a real tick.
             new Test("server_tick_hook_is_wired", 100, true, SharedLifeGameTests::serverTickHookIsWired),
             new Test("health_not_shared_when_disabled", 100, SharedLifeGameTests::healthNotSharedWhenDisabled),
@@ -59,7 +64,17 @@ public final class NeoForgeGameTests {
             new Test("experience_not_shared_when_disabled", 100, SharedLifeGameTests::experienceNotSharedWhenDisabled),
             new Test("ethereal_players_excluded", 100, SharedLifeGameTests::etherealPlayersExcluded),
             new Test("death_reseeds_from_next_joiner", 100, SharedLifeGameTests::deathReseedsFromNextJoiner),
-            new Test("saved_state_restores_after_reload", 100, SharedLifeGameTests::savedStateRestoresAfterReload));
+            new Test("survival_switch_joins_shared_life", 100, false, false, SharedLifeGameTests::survivalSwitchJoinsSharedLife),
+            new Test("creative_switch_leaves_pool_untouched", 100, SharedLifeGameTests::creativeSwitchLeavesPoolUntouched),
+            new Test("ethereal_players_excluded_from_tick_sync", 100, SharedLifeGameTests::etherealPlayersExcludedFromTickSync),
+            new Test("survival_switch_reseeds_dead_pool", 100, false, false, SharedLifeGameTests::survivalSwitchReseedsDeadPool),
+            new Test("saved_state_restores_after_reload", 100, SharedLifeGameTests::savedStateRestoresAfterReload),
+            new Test("damage_message_announced_with_source", 100, SharedLifeGameTests::damageMessageAnnouncedWithSource),
+            new Test("damage_message_silenced_when_disabled", 100, SharedLifeGameTests::damageMessageSilencedWhenDisabled),
+            new Test("damage_message_omits_source_when_disabled", 100, SharedLifeGameTests::damageMessageOmitsSourceWhenDisabled),
+            new Test("death_summary_announced_on_shared_death", 100, false, false, SharedLifeGameTests::deathSummaryAnnouncedOnSharedDeath),
+            new Test("death_summary_counts_since_last_full_health", 100, false, false, SharedLifeGameTests::deathSummaryCountsSinceLastFullHealth),
+            new Test("death_summary_silenced_when_disabled", 100, SharedLifeGameTests::deathSummarySilencedWhenDisabled));
 
     private NeoForgeGameTests() {
     }
