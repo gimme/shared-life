@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The shared life is now saved with the world: a restart resumes the shared health (and hunger and
+  experience, while shared) where it left off, instead of re-seeding it from a player. Seeding now
+  only starts a genuinely new life — a fresh world, or the respawn after a shared death.
+
 ### Changed
 
 - `shareDeath` now defaults to disabled. Death sharing still implicitly applies while `shareHealth`
