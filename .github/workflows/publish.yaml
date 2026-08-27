@@ -62,7 +62,10 @@ jobs:
       - name: Create release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create ${{ steps.vars.outputs.tag }} ./build-artifact/**/build/libs/*.jar --target ${{ github.sha }} --title ${{ steps.vars.outputs.tag }} --notes '${{ steps.changelog.outputs.release_notes }}'
+          TAG: ${{ steps.vars.outputs.tag }}
+          # Passed through the environment so quotes in the notes can't break the shell command.
+          RELEASE_NOTES: ${{ steps.changelog.outputs.release_notes }}
+        run: gh release create "$TAG" ./build-artifact/**/build/libs/*.jar --target ${{ github.sha }} --title "$TAG" --notes "$RELEASE_NOTES"
     needs:
       - build
 
