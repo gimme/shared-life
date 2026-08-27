@@ -407,6 +407,45 @@ public final class SharedLifeGameTests {
     }
 
     /**
+     * A shared death clears the exhaustion pooled in the old life: the next life starts its food
+     * state vanilla-fresh, like a respawned player's, instead of inheriting up to a saturation
+     * point's worth of pending residual (anything still under vanilla's 4-point drain threshold).
+     */
+    public static void deathClearsPooledExhaustion(GameTestHelper helper) {
+        try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, true);
+             var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            try {
+                a.getFoodData().addExhaustion(3f); // under the 4-point threshold: pools as residual
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertExhaustion(helper, a, 0f); // absorbed into the pool...
+                assertFood(helper, a, 20, 5f); // ...where it sits pending, not yet paid
+
+                Main.INSTANCE.getPlayerHandler().onPlayerDeath(a); // a real shared death
+            } finally {
+                removeRealPlayers(helper, a);
+            }
+
+            ServerPlayer b = spawnRealPlayer(helper); // re-seeds the dead pool on join
+            try {
+                b.getFoodData().addExhaustion(2f); // crosses the threshold only joined with the old 3
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertFood(helper, b, 20, 5f); // fresh life: the old residual is gone, nothing paid
+            } finally {
+                removeRealPlayers(helper, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
      * When the shared food empties, the shared heart starves and every player takes the damage — as
      * {@code shared_life} damage, which bypasses invulnerability, so both take it on the same tick.
      */
