@@ -674,10 +674,8 @@ public final class SharedLifeGameTests {
 
     /**
      * Switching from creative into survival must sync the player onto the live shared pool, the same
-     * way joining the level does.
-     *
-     * <p>Known red: on both loaders the game-mode-change hook runs before the mode actually changes,
-     * so the player still reads as ethereal and the sync is skipped.
+     * way joining the level does — via the mod's post-change hook (see {@code MixinPlayerChangeGameMode}),
+     * so the player no longer reads as ethereal.
      */
     public static void survivalSwitchJoinsSharedLife(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
@@ -747,9 +745,6 @@ public final class SharedLifeGameTests {
     /**
      * After a total death, a creative player switching into survival must re-seed the dead pool from
      * their own state, just like the next player to join does.
-     *
-     * <p>Known red: same cause as {@link #survivalSwitchJoinsSharedLife}, so the pool stays dead and
-     * the next joiner seeds it instead.
      */
     public static void survivalSwitchReseedsDeadPool(GameTestHelper helper) {
         try (var _ = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
@@ -1140,8 +1135,9 @@ public final class SharedLifeGameTests {
         ServerLevel level = helper.getLevel();
         ServerPlayer player = new FakePlayer(level, new GameProfile(UUID.randomUUID(), "TestPlayer"));
         // The game-test server defaults new players to creative, which Players treats as ethereal
-        // and excludes from the shared life. Force survival so the shared-life gating applies.
-        player.setGameMode(GameType.SURVIVAL);
+        // and excludes from the shared life. Pin survival through the internal mode holder:
+        // setGameMode would fire the real change hook and join this player into the pool mid-setup.
+        player.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
         player.setHealth(health);
         return player;
     }

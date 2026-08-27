@@ -6,7 +6,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.entity.EntityJoinLevelEvent;
 import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import net.neoforged.neoforge.event.entity.living.LivingHealEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 public class PlayerListener {
 
@@ -14,12 +13,6 @@ public class PlayerListener {
     public void onJoinLevel(EntityJoinLevelEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(player);
-    }
-
-    @SubscribeEvent
-    public void onChangeGameMode(PlayerEvent.PlayerChangeGameModeEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        Main.INSTANCE.getPlayerHandler().onPlayerChangeGameMode(player, event.getNewGameMode());
     }
 
     @SubscribeEvent

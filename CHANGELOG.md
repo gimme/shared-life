@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   everyone even when only death sharing is enabled
 - Fixed the death summary never being announced when a death ended the shared life. It arrives right
   after the death messages.
+- Fixed switching out of creative or spectator mode not joining the player into the shared life:
+  they now sync onto the live shared health — or re-seed it from their own state after a total
+  death — the same way joining the server does.
 
 ## [v26.2-0.2.1] - 2026-08-26
 

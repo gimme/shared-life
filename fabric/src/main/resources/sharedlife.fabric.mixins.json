@@ -4,7 +4,6 @@
   "package": "dev.gimme.sharedlife.fabric.mixin",
   "compatibilityLevel": "JAVA_${java_version}",
   "mixins": [
-    "MixinPlayerChangeGameMode",
     "MixinPlayerDie",
     "MixinPlayerHeal",
     "MixinPlayerRespawn"

@@ -122,8 +122,7 @@ public final class FabricGameTests {
         SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
     }
 
-    // Known red (see the shared test's doc): optional until the fix lands.
-    @GameTest(required = false)
+    @GameTest
     public void survivalSwitchJoinsSharedLife(GameTestHelper helper) {
         SharedLifeGameTests.survivalSwitchJoinsSharedLife(helper);
     }
@@ -138,8 +137,7 @@ public final class FabricGameTests {
         SharedLifeGameTests.etherealPlayersExcludedFromTickSync(helper);
     }
 
-    // Known red (see the shared test's doc): optional until the fix lands.
-    @GameTest(required = false)
+    @GameTest
     public void survivalSwitchReseedsDeadPool(GameTestHelper helper) {
         SharedLifeGameTests.survivalSwitchReseedsDeadPool(helper);
     }

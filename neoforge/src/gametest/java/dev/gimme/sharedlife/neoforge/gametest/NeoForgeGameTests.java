@@ -63,12 +63,10 @@ public final class NeoForgeGameTests {
             new Test("experience_not_shared_when_disabled", 100, SharedLifeGameTests::experienceNotSharedWhenDisabled),
             new Test("ethereal_players_excluded", 100, SharedLifeGameTests::etherealPlayersExcluded),
             new Test("death_reseeds_from_next_joiner", 100, SharedLifeGameTests::deathReseedsFromNextJoiner),
-            // Known red (see the shared test's doc): registered as not required until the fixes land.
-            new Test("survival_switch_joins_shared_life", 100, false, false, SharedLifeGameTests::survivalSwitchJoinsSharedLife),
+            new Test("survival_switch_joins_shared_life", 100, SharedLifeGameTests::survivalSwitchJoinsSharedLife),
             new Test("creative_switch_leaves_pool_untouched", 100, SharedLifeGameTests::creativeSwitchLeavesPoolUntouched),
             new Test("ethereal_players_excluded_from_tick_sync", 100, SharedLifeGameTests::etherealPlayersExcludedFromTickSync),
-            // Known red (see the shared test's doc): registered as not required until the fixes land.
-            new Test("survival_switch_reseeds_dead_pool", 100, false, false, SharedLifeGameTests::survivalSwitchReseedsDeadPool),
+            new Test("survival_switch_reseeds_dead_pool", 100, SharedLifeGameTests::survivalSwitchReseedsDeadPool),
             new Test("saved_state_restores_after_reload", 100, SharedLifeGameTests::savedStateRestoresAfterReload),
             new Test("damage_message_announced_with_source", 100, SharedLifeGameTests::damageMessageAnnouncedWithSource),
             new Test("damage_message_silenced_when_disabled", 100, SharedLifeGameTests::damageMessageSilencedWhenDisabled),
