@@ -171,9 +171,9 @@ public final class SharedLifeGameTests {
             resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
-            a.setHealth(10);
-            b.setHealth(10);
             try {
+                a.setHealth(10);
+                b.setHealth(10);
                 seedPoolFrom(a);
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
@@ -422,7 +422,7 @@ public final class SharedLifeGameTests {
              var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, true);
              var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
 
-            server.setDifficulty(Difficulty.HARD, true); // EASY/NORMAL won't starve a full-health heart
+            server.setDifficulty(Difficulty.HARD, true); // any difficulty starves a full-health heart; pinned for determinism
 
             resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
@@ -467,9 +467,9 @@ public final class SharedLifeGameTests {
             resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
-            a.setHealth(10);
-            b.setHealth(10);
             try {
+                a.setHealth(10);
+                b.setHealth(10);
                 seedPoolFrom(a);
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
@@ -501,9 +501,9 @@ public final class SharedLifeGameTests {
             resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
-            a.setHealth(10);
-            b.setHealth(10);
             try {
+                a.setHealth(10);
+                b.setHealth(10);
                 seedPoolFrom(a);
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
@@ -538,21 +538,21 @@ public final class SharedLifeGameTests {
             resetPool(helper);
             ServerPlayer a = spawnRealPlayer(helper);
             ServerPlayer b = spawnRealPlayer(helper);
-            a.setHealth(10);
-            b.setHealth(10);
             try {
+                a.setHealth(10);
+                b.setHealth(10);
                 seedPoolFrom(a);
                 Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b); // sync B to the re-seeded pool
 
-                setFood(a, 20, 6f); // everyone at full food with saturation:
-                setFood(b, 20, 8f); // vanilla's fast branch, limited by the lowest saturation (6)
+                setFood(a, 20, 3f); // everyone at full food with saturation:
+                setFood(b, 20, 5f); // vanilla's fast branch, limited by the lowest saturation (3)
 
                 for (int i = 0; i < 12; i++) {
                     Main.INSTANCE.getServerHandler().onServerTick();
                 }
 
-                assertApproxHealth(helper, a, 11f); // one fast heal (tick 10) of min(6, 6) / 6 = 1.0
-                assertApproxHealth(helper, b, 11f);
+                assertApproxHealth(helper, a, 10.5f); // one fast heal (tick 10) of min(3, 6) / 6 = 0.5
+                assertApproxHealth(helper, b, 10.5f);
 
                 setFood(b, 20, 0f); // B's saturation runs out: the group falls back to the slow branch
 
@@ -560,8 +560,8 @@ public final class SharedLifeGameTests {
                     Main.INSTANCE.getServerHandler().onServerTick();
                 }
 
-                assertApproxHealth(helper, a, 11f); // no fast heal without everyone saturated
-                assertApproxHealth(helper, b, 11f);
+                assertApproxHealth(helper, a, 10.5f); // no fast heal without everyone saturated
+                assertApproxHealth(helper, b, 10.5f);
             } finally {
                 removeRealPlayers(helper, a, b);
             }
