@@ -302,7 +302,7 @@ public class SharedLife {
         var name = hurtPlayer != null ? hurtPlayer.getName().getString() : Constants.MOD_NAME;
         damageTakenSinceFullHealth.merge(name, amount, Float::sum);
 
-        geSharedHealthPlayers().forEach(player -> sendDamageMessage(player, hurtPlayer, source, amount));
+        getSharedHealthPlayers().forEach(player -> sendDamageMessage(player, hurtPlayer, source, amount));
 
         if (source.is(DamageTypes.STARVE)) {
             // Starvation is the one damage type that applies to all players individually,
@@ -379,7 +379,7 @@ public class SharedLife {
                     .append(Component.literal("❤").withStyle(Style.EMPTY.withColor(ChatFormatting.DARK_RED)));
         }
 
-        geSharedHealthPlayers().forEach(player -> player.sendSystemMessage(message, false));
+        getSharedHealthPlayers().forEach(player -> player.sendSystemMessage(message, false));
         LOG.debug(message.getString());
     }
 
@@ -421,7 +421,7 @@ public class SharedLife {
         LOG.debug(message.getString());
     }
 
-    private Stream<ServerPlayer> geSharedHealthPlayers() {
+    private Stream<ServerPlayer> getSharedHealthPlayers() {
         return server.getPlayerList().getPlayers().stream().filter(Players::isSharedHealthEnabled);
     }
     private Stream<ServerPlayer> getLiveSharedHealthPlayers() {
