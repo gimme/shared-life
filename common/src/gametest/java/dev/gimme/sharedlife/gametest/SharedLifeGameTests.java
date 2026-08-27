@@ -12,6 +12,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,11 +20,15 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Abilities;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -40,6 +45,9 @@ import java.util.UUID;
  * real tick in its own sequential batch.
  */
 public final class SharedLifeGameTests {
+
+    /** Mirrors the production formatter (locale-sensitive on both sides) for message assertions. */
+    private static final DecimalFormat HEARTS_FORMAT = new DecimalFormat("0.0");
 
     private SharedLifeGameTests() {
     }
@@ -110,6 +118,44 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    /**
+     * Absorption hearts soak damage before it reaches the shared pool: only the health-reducing
+     * remainder is shared, and a fully absorbed hit leaves the pool untouched.
+     */
+    public static void absorptionAbsorbsSharedDamage(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                a.getAttribute(Attributes.MAX_ABSORPTION).setBaseValue(10); // absorption is clamped by this attribute, 0 by default
+                a.setAbsorptionAmount(4f);
+                a.invulnerableTime = 0;
+                a.hurt(helper.getLevel().damageSources().generic(), 6f);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertApproxHealth(helper, a, 18f); // 4 of the 6 was absorbed, only 2 was shared
+                assertApproxHealth(helper, b, 18f);
+
+                a.setAbsorptionAmount(5f);
+                a.invulnerableTime = 0;
+                a.hurt(helper.getLevel().damageSources().generic(), 3f);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertApproxHealth(helper, a, 18f); // fully absorbed: nothing reached the pool
+                assertApproxHealth(helper, b, 18f);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
     /** Real healing on one player raises the shared pool and lifts another on the next tick. */
     public static void healingSyncsAcrossRealPlayers(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -164,6 +210,22 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    /** Healing cannot revive a dead pool: a heal landing after the fatal blow must not cancel the cascade. */
+    public static void healCannotReviveDeadPool(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
+            ServerPlayer seed = spawnFake(helper, 20f);
+            seedPoolFrom(seed);
+
+            Main.INSTANCE.getPlayerHandler().onPlayerDeath(seed);
+            Main.INSTANCE.getPlayerHandler().onPlayerHeal(seed, 4f); // e.g. regeneration firing after the death
+
+            ServerPlayer joiner = spawnFake(helper, 20f);
+            Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
+            assertHealth(helper, joiner, 20f); // the pool stayed dead, so the joiner re-seeded it instead of syncing to 4
+        }
+        helper.succeed();
+    }
+
     /** A totem of undying on the fatally hit player revives the shared pool to one health for everyone. */
     public static void totemRevivesSharedLife(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -186,6 +248,41 @@ public final class SharedLifeGameTests {
 
                 assertApproxHealth(helper, a, 1f);
                 assertApproxHealth(helper, b, 1f);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    // ---- death sharing without shared health ----
+
+    /**
+     * With health sharing off but death sharing on, one player's death must still kill everyone:
+     * the shareDeath config promises "all players should die when one player dies".
+     *
+     * <p>Known red: the death cascade runs through the health sync, which only covers shared-health
+     * players, so with shareHealth off the death never reaches the others.
+     */
+    public static void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, false);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_DEATH, true);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var ignored4 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                a.invulnerableTime = 0;
+                a.hurt(helper.getLevel().damageSources().generic(), 1000f);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                helper.assertTrue(a.isDeadOrDying(),
+                        "A should have died from the fatal blow, but had health " + a.getHealth());
+                helper.assertTrue(b.isDeadOrDying(),
+                        "B should have been killed by the shared death, but had health " + b.getHealth());
             } finally {
                 removeRealPlayers(helper, a, b);
             }
@@ -446,6 +543,42 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    /** Spending levels on one player lowers everyone on the next tick, and the pool bottoms out at zero. */
+    public static void experienceSpendingSyncsAcrossRealPlayers(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, true)) {
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                a.giveExperienceLevels(5);
+                Main.INSTANCE.getServerHandler().onServerTick(); // both at the shared 5 levels
+
+                a.giveExperienceLevels(-3); // spent, as on an enchantment or anvil
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                helper.assertTrue(a.experienceLevel == 2,
+                        "A should have kept the 2 levels left after spending, but had " + a.experienceLevel);
+                helper.assertTrue(b.experienceLevel == 2,
+                        "B should have synced down to the shared 2 levels, but had " + b.experienceLevel);
+
+                a.giveExperienceLevels(-2); // both spend everything on the same tick:
+                b.giveExperienceLevels(-2); // the pool clamps at zero instead of going negative
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                helper.assertTrue(a.experienceLevel == 0,
+                        "A should have been synced to the emptied pool, but had " + a.experienceLevel);
+                helper.assertTrue(b.experienceLevel == 0,
+                        "B should have been synced to the emptied pool, but had " + b.experienceLevel);
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
     // ---- loader wiring: the real per-tick hook ----
 
     /**
@@ -545,6 +678,103 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    // ---- game-mode changes: leaving and rejoining the shared life ----
+
+    /**
+     * Switching from creative into survival must sync the player onto the live shared pool, the same
+     * way joining the level does.
+     *
+     * <p>Known red: on both loaders the game-mode-change hook runs before the mode actually changes,
+     * so the player still reads as ethereal and the sync is skipped.
+     */
+    public static void survivalSwitchJoinsSharedLife(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
+            ServerPlayer seed = spawnFake(helper, 14f);
+            seedPoolFrom(seed);
+
+            ServerPlayer switcher = spawnFake(helper, 20f);
+            switcher.setGameMode(GameType.CREATIVE);
+
+            switcher.setGameMode(GameType.SURVIVAL); // the loader's real change hook must sync them in
+
+            assertHealth(helper, switcher, 14f);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Switching into creative must leave the shared life untouched: the switcher keeps their own
+     * state and the pool carries on unchanged for everyone else.
+     */
+    public static void creativeSwitchLeavesPoolUntouched(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
+            ServerPlayer seed = spawnFake(helper, 14f);
+            seedPoolFrom(seed);
+
+            ServerPlayer switcher = spawnFake(helper, 20f);
+            switcher.setGameMode(GameType.CREATIVE); // must not re-seed, kill, or sync anything
+
+            assertHealth(helper, switcher, 20f);
+
+            ServerPlayer joiner = spawnFake(helper, 20f);
+            Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
+            assertHealth(helper, joiner, 14f); // the pool carried on at the seeded 14
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Creative players are ethereal to the per-tick sync as well: the pool follows the survival
+     * players and never writes to — or seeds from — the creative one. The creative player is pinned
+     * at spawn because {@link #spawnRealPlayer(GameTestHelper, GameType)} answers its creative/spectator
+     * checks from the construction game type, not from later {@code setGameMode} calls.
+     */
+    public static void etherealPlayersExcludedFromTickSync(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper);
+            ServerPlayer creative = spawnRealPlayer(helper, GameType.CREATIVE); // never joins or seeds the pool
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                b.invulnerableTime = 0;
+                b.hurt(helper.getLevel().damageSources().generic(), 6f);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                assertApproxHealth(helper, b, 14f);        // the pool carried on for the survival player
+                assertApproxHealth(helper, creative, 20f); // the creative player never followed it
+            } finally {
+                removeRealPlayers(helper, creative, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * After a total death, a creative player switching into survival must re-seed the dead pool from
+     * their own state, just like the next player to join does.
+     *
+     * <p>Known red: same cause as {@link #survivalSwitchJoinsSharedLife}, so the pool stays dead and
+     * the next joiner seeds it instead.
+     */
+    public static void survivalSwitchReseedsDeadPool(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
+            ServerPlayer switcher = spawnFake(helper, 6f);
+            switcher.setGameMode(GameType.CREATIVE);
+
+            killPool(spawnFake(helper, 20f)); // total death while the switcher sits in creative
+
+            switcher.setGameMode(GameType.SURVIVAL); // must re-seed the pool at their 6 health
+
+            ServerPlayer joiner = spawnFake(helper, 20f);
+            Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(joiner);
+            assertHealth(helper, joiner, 6f); // synced to the re-seeded pool, not seeding it themselves
+        }
+        helper.succeed();
+    }
+
     // ---- persistence: the shared state is saved with the world ----
 
     /**
@@ -607,6 +837,183 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    // ---- chat announcements: damage messages and the death summary ----
+
+    /** Every hit is announced to the group as hearts of damage, naming the damage source when configured. */
+    public static void damageMessageAnnouncedWithSource(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DAMAGE, true);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.INCLUDE_DAMAGE_SOURCE, true)) {
+
+            resetPool(helper);
+            RealPlayer a = spawnRealPlayerWithChannel(helper);
+            String name = a.player().getName().getString();
+            try {
+                drainSystemMessages(a.channel()); // discard the join noise
+
+                a.player().invulnerableTime = 0;
+                a.player().hurt(helper.getLevel().damageSources().generic(), 6f);
+
+                List<String> messages = drainSystemMessages(a.channel());
+                String expectedHearts = HEARTS_FORMAT.format(3.0); // 6 damage = 3 hearts
+                helper.assertTrue(messages.stream().anyMatch(message ->
+                                message.contains(name) && message.contains(expectedHearts) && message.contains("generic")),
+                        "expected a damage message naming " + name + ", " + expectedHearts
+                                + "❤ and the generic source, but got " + messages);
+            } finally {
+                removeRealPlayers(helper, a.player());
+            }
+        }
+        helper.succeed();
+    }
+
+    /** With announceDamage off, hits stay out of the chat. */
+    public static void damageMessageSilencedWhenDisabled(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DAMAGE, false)) {
+
+            resetPool(helper);
+            RealPlayer a = spawnRealPlayerWithChannel(helper);
+            try {
+                drainSystemMessages(a.channel());
+
+                a.player().invulnerableTime = 0;
+                a.player().hurt(helper.getLevel().damageSources().generic(), 6f);
+
+                List<String> messages = drainSystemMessages(a.channel());
+                helper.assertTrue(messages.stream().noneMatch(message -> message.contains("❤")),
+                        "announceDamage is off, so no damage message should be sent, but got " + messages);
+            } finally {
+                removeRealPlayers(helper, a.player());
+            }
+        }
+        helper.succeed();
+    }
+
+    /** With includeDamageSource off, the damage message leaves out where the damage came from. */
+    public static void damageMessageOmitsSourceWhenDisabled(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DAMAGE, true);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.INCLUDE_DAMAGE_SOURCE, false)) {
+
+            resetPool(helper);
+            RealPlayer a = spawnRealPlayerWithChannel(helper);
+            try {
+                drainSystemMessages(a.channel());
+
+                a.player().invulnerableTime = 0;
+                a.player().hurt(helper.getLevel().damageSources().generic(), 6f);
+
+                List<String> messages = drainSystemMessages(a.channel());
+                helper.assertTrue(messages.stream().anyMatch(message -> message.contains("❤")),
+                        "expected a damage message, but got " + messages);
+                helper.assertTrue(messages.stream().noneMatch(message -> message.contains("generic")),
+                        "includeDamageSource is off, so the source should be omitted, but got " + messages);
+            } finally {
+                removeRealPlayers(helper, a.player());
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * When a death ends the shared life, the group is told how much damage each player took since the
+     * shared health was last full — the fall that ended the life.
+     *
+     * <p>Known red: the fatal blow empties the pool before the death hook fires, so the announcement's
+     * dead-pool guard returns before it ever announces.
+     */
+    public static void deathSummaryAnnouncedOnSharedDeath(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DAMAGE, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DEATH_SUMMARY, true)) {
+
+            resetPool(helper);
+            RealPlayer a = spawnRealPlayerWithChannel(helper);
+            String name = a.player().getName().getString();
+            try {
+                drainSystemMessages(a.channel());
+
+                a.player().invulnerableTime = 0;
+                a.player().hurt(helper.getLevel().damageSources().generic(), 20f);
+
+                List<String> messages = drainSystemMessages(a.channel());
+                String expectedHearts = HEARTS_FORMAT.format(10.0); // the full 20-point fall
+                helper.assertTrue(messages.stream().anyMatch(message ->
+                                message.contains(name) && message.contains(expectedHearts)),
+                        "expected a death summary crediting " + name + " with " + expectedHearts
+                                + "❤, but got " + messages);
+            } finally {
+                removeRealPlayers(helper, a.player());
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * The death summary counts only the fall since the shared health was last full: damage healed
+     * back to full is forgotten.
+     *
+     * <p>Known red: same cause as {@link #deathSummaryAnnouncedOnSharedDeath}.
+     */
+    public static void deathSummaryCountsSinceLastFullHealth(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DAMAGE, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DEATH_SUMMARY, true)) {
+
+            resetPool(helper);
+            RealPlayer a = spawnRealPlayerWithChannel(helper);
+            String name = a.player().getName().getString();
+            try {
+                a.player().invulnerableTime = 0;
+                a.player().hurt(helper.getLevel().damageSources().generic(), 6f);
+                a.player().heal(6f); // back to full health: the earlier fall is forgotten
+
+                drainSystemMessages(a.channel());
+
+                a.player().invulnerableTime = 0;
+                a.player().hurt(helper.getLevel().damageSources().generic(), 20f);
+
+                List<String> messages = drainSystemMessages(a.channel());
+                String expectedHearts = HEARTS_FORMAT.format(10.0); // only the final 20-point fall
+                String staleHearts = HEARTS_FORMAT.format(13.0);    // 6 + 20, if the healed damage still counted
+                helper.assertTrue(messages.stream().anyMatch(message ->
+                                message.contains(name) && message.contains(expectedHearts)),
+                        "expected a death summary crediting " + name + " with " + expectedHearts
+                                + "❤, but got " + messages);
+                helper.assertTrue(messages.stream().noneMatch(message -> message.contains(staleHearts)),
+                        "the damage healed back to full should be forgotten, but got " + messages);
+            } finally {
+                removeRealPlayers(helper, a.player());
+            }
+        }
+        helper.succeed();
+    }
+
+    /** With announceDeathSummary off, a shared death announces nothing. */
+    public static void deathSummarySilencedWhenDisabled(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DAMAGE, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.ANNOUNCE_DEATH_SUMMARY, false)) {
+
+            resetPool(helper);
+            RealPlayer a = spawnRealPlayerWithChannel(helper);
+            try {
+                drainSystemMessages(a.channel());
+
+                a.player().invulnerableTime = 0;
+                a.player().hurt(helper.getLevel().damageSources().generic(), 20f);
+
+                List<String> messages = drainSystemMessages(a.channel());
+                helper.assertTrue(messages.stream().noneMatch(message -> message.contains("❤")),
+                        "announceDeathSummary is off, so no summary should be sent, but got " + messages);
+            } finally {
+                removeRealPlayers(helper, a.player());
+            }
+        }
+        helper.succeed();
+    }
+
     // ---- helpers ----
 
     /**
@@ -657,6 +1064,10 @@ public final class SharedLifeGameTests {
         killPool(spawnFake(helper, 20f));
     }
 
+    /** A {@link #spawnRealPlayer real player} together with its embedded channel, holding the packets sent to it. */
+    private record RealPlayer(ServerPlayer player, EmbeddedChannel channel) {
+    }
+
     /**
      * A real, survival player registered in {@code server.getPlayerList()}, so the per-tick sync loop
      * sees it and death/tick processing runs for real. Deliberately not one of the helper's mocks:
@@ -664,6 +1075,26 @@ public final class SharedLifeGameTests {
      * as permanently ethereal.
      */
     private static ServerPlayer spawnRealPlayer(GameTestHelper helper) {
+        return spawnRealPlayer(helper, GameType.SURVIVAL);
+    }
+
+    /**
+     * A {@link #spawnRealPlayer real player} pinned to the given game type: the mock's
+     * creative/spectator checks answer from this pin, not from later {@code setGameMode} calls.
+     */
+    private static ServerPlayer spawnRealPlayer(GameTestHelper helper, GameType gameType) {
+        return spawnRealPlayerWithChannel(helper, gameType).player();
+    }
+
+    /**
+     * Like {@link #spawnRealPlayer}, but keeps the player's {@link EmbeddedChannel} so the test can
+     * read the packets — e.g. chat messages — that the mod sends to the player.
+     */
+    private static RealPlayer spawnRealPlayerWithChannel(GameTestHelper helper) {
+        return spawnRealPlayerWithChannel(helper, GameType.SURVIVAL);
+    }
+
+    private static RealPlayer spawnRealPlayerWithChannel(GameTestHelper helper, GameType gameType) {
         ServerLevel level = helper.getLevel();
         MinecraftServer server = level.getServer();
 
@@ -671,32 +1102,49 @@ public final class SharedLifeGameTests {
         CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
         ServerPlayer player = new ServerPlayer(server, level, cookie.gameProfile(), cookie.clientInformation()) {
             // The join hook fires inside placeNewPlayer, while the game-test server's default creative
-            // mode still applies — which would read as ethereal and skip the join-time pool sync.
+            // mode still applies — these pins answer for the target mode before setGameMode lands below.
             @Override
             public boolean isCreative() {
-                return false;
+                return gameType == GameType.CREATIVE;
             }
 
             @Override
             public boolean isSpectator() {
-                return false;
+                return gameType == GameType.SPECTATOR;
             }
         };
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
-        new EmbeddedChannel(connection); // wires connection.channel so placeNewPlayer can send packets
+        EmbeddedChannel channel = new EmbeddedChannel(connection); // wires connection.channel so placeNewPlayer can send packets
         server.getPlayerList().placeNewPlayer(connection, player, cookie);
         // Mock players aren't wired to a real client connection, so the server never runs their per-tick update.
         helper.onEachTick(player::doTick);
 
-        player.setGameMode(GameType.SURVIVAL);
-        Abilities abilities = player.getAbilities();
-        abilities.invulnerable = false;
-        abilities.instabuild = false;
-        abilities.flying = false;
-        player.onUpdateAbilities();
+        player.setGameMode(gameType);
+        if (gameType == GameType.SURVIVAL) {
+            Abilities abilities = player.getAbilities();
+            abilities.invulnerable = false;
+            abilities.instabuild = false;
+            abilities.flying = false;
+            player.onUpdateAbilities();
+        }
         clearSpawnInvulnerability(player);
         player.invulnerableTime = 0;
-        return player;
+        return new RealPlayer(player, channel);
+    }
+
+    /**
+     * Returns the chat messages sent to the player so far and clears the channel, so a test can
+     * discard setup noise and then assert on exactly the messages its own action produced.
+     */
+    private static List<String> drainSystemMessages(EmbeddedChannel channel) {
+        var messages = new ArrayList<String>();
+        for (Object packet : channel.outboundMessages()) {
+            if (packet instanceof ClientboundSystemChatPacket chat) {
+                messages.add(chat.content().getString());
+            }
+        }
+        channel.outboundMessages().clear();
+        return messages;
     }
 
     /** Removes players registered via {@link #spawnRealPlayer} from the live player list. */

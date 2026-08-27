@@ -29,8 +29,18 @@ public final class NeoForgeGameTests {
     }
 
     @GameTest(template = EMPTY)
+    public void absorptionAbsorbsSharedDamage(GameTestHelper helper) {
+        SharedLifeGameTests.absorptionAbsorbsSharedDamage(helper);
+    }
+
+    @GameTest(template = EMPTY)
     public void healingSyncsAcrossRealPlayers(GameTestHelper helper) {
         SharedLifeGameTests.healingSyncsAcrossRealPlayers(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void healCannotReviveDeadPool(GameTestHelper helper) {
+        SharedLifeGameTests.healCannotReviveDeadPool(helper);
     }
 
     @GameTest(template = EMPTY)
@@ -41,6 +51,12 @@ public final class NeoForgeGameTests {
     @GameTest(template = EMPTY)
     public void totemRevivesSharedLife(GameTestHelper helper) {
         SharedLifeGameTests.totemRevivesSharedLife(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(template = EMPTY, required = false)
+    public void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
+        SharedLifeGameTests.shareDeathCascadesWithoutSharedHealth(helper);
     }
 
     @GameTest(template = EMPTY)
@@ -78,6 +94,11 @@ public final class NeoForgeGameTests {
         SharedLifeGameTests.experienceSyncsAcrossRealPlayers(helper);
     }
 
+    @GameTest(template = EMPTY)
+    public void experienceSpendingSyncsAcrossRealPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.experienceSpendingSyncsAcrossRealPlayers(helper);
+    }
+
     // The one real-tick test: its own batch, so nothing else runs while its players await a real tick.
     @GameTest(template = EMPTY, batch = "serverTickHook")
     public void serverTickHookIsWired(GameTestHelper helper) {
@@ -109,8 +130,62 @@ public final class NeoForgeGameTests {
         SharedLifeGameTests.deathReseedsFromNextJoiner(helper);
     }
 
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(template = EMPTY, required = false)
+    public void survivalSwitchJoinsSharedLife(GameTestHelper helper) {
+        SharedLifeGameTests.survivalSwitchJoinsSharedLife(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void creativeSwitchLeavesPoolUntouched(GameTestHelper helper) {
+        SharedLifeGameTests.creativeSwitchLeavesPoolUntouched(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void etherealPlayersExcludedFromTickSync(GameTestHelper helper) {
+        SharedLifeGameTests.etherealPlayersExcludedFromTickSync(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(template = EMPTY, required = false)
+    public void survivalSwitchReseedsDeadPool(GameTestHelper helper) {
+        SharedLifeGameTests.survivalSwitchReseedsDeadPool(helper);
+    }
+
     @GameTest(template = EMPTY)
     public void savedStateRestoresAfterReload(GameTestHelper helper) {
         SharedLifeGameTests.savedStateRestoresAfterReload(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void damageMessageAnnouncedWithSource(GameTestHelper helper) {
+        SharedLifeGameTests.damageMessageAnnouncedWithSource(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void damageMessageSilencedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.damageMessageSilencedWhenDisabled(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void damageMessageOmitsSourceWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.damageMessageOmitsSourceWhenDisabled(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(template = EMPTY, required = false)
+    public void deathSummaryAnnouncedOnSharedDeath(GameTestHelper helper) {
+        SharedLifeGameTests.deathSummaryAnnouncedOnSharedDeath(helper);
+    }
+
+    // Known red (see the shared test's doc): optional until the fix lands.
+    @GameTest(template = EMPTY, required = false)
+    public void deathSummaryCountsSinceLastFullHealth(GameTestHelper helper) {
+        SharedLifeGameTests.deathSummaryCountsSinceLastFullHealth(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void deathSummarySilencedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.deathSummarySilencedWhenDisabled(helper);
     }
 }
