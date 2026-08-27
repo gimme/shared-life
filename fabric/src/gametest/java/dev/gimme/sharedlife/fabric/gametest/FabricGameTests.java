@@ -47,8 +47,7 @@ public final class FabricGameTests implements FabricGameTest {
         SharedLifeGameTests.totemRevivesSharedLife(helper);
     }
 
-    // Known red (see the shared test's doc): optional until the fix lands.
-    @GameTest(template = EMPTY_STRUCTURE, required = false)
+    @GameTest(template = EMPTY_STRUCTURE)
     public void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
         SharedLifeGameTests.shareDeathCascadesWithoutSharedHealth(helper);
     }
@@ -166,14 +165,12 @@ public final class FabricGameTests implements FabricGameTest {
         SharedLifeGameTests.damageMessageOmitsSourceWhenDisabled(helper);
     }
 
-    // Known red (see the shared test's doc): optional until the fix lands.
-    @GameTest(template = EMPTY_STRUCTURE, required = false)
+    @GameTest(template = EMPTY_STRUCTURE)
     public void deathSummaryAnnouncedOnSharedDeath(GameTestHelper helper) {
         SharedLifeGameTests.deathSummaryAnnouncedOnSharedDeath(helper);
     }
 
-    // Known red (see the shared test's doc): optional until the fix lands.
-    @GameTest(template = EMPTY_STRUCTURE, required = false)
+    @GameTest(template = EMPTY_STRUCTURE)
     public void deathSummaryCountsSinceLastFullHealth(GameTestHelper helper) {
         SharedLifeGameTests.deathSummaryCountsSinceLastFullHealth(helper);
     }

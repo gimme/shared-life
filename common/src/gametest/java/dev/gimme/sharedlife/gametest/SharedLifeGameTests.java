@@ -260,9 +260,6 @@ public final class SharedLifeGameTests {
     /**
      * With health sharing off but death sharing on, one player's death must still kill everyone:
      * the shareDeath config promises "all players should die when one player dies".
-     *
-     * <p>Known red: the death cascade runs through the health sync, which only covers shared-health
-     * players, so with shareHealth off the death never reaches the others.
      */
     public static void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, false);
@@ -764,7 +761,7 @@ public final class SharedLifeGameTests {
             ServerPlayer switcher = spawnFake(helper, 6f);
             switcher.setGameMode(GameType.CREATIVE);
 
-            killPool(spawnFake(helper, 20f)); // total death while the switcher sits in creative
+            killPool(helper.getLevel().getServer()); // total death while the switcher sits in creative
 
             switcher.setGameMode(GameType.SURVIVAL); // must re-seed the pool at their 6 health
 
@@ -918,10 +915,9 @@ public final class SharedLifeGameTests {
 
     /**
      * When a death ends the shared life, the group is told how much damage each player took since the
-     * shared health was last full — the fall that ended the life.
-     *
-     * <p>Known red: the fatal blow empties the pool before the death hook fires, so the announcement's
-     * dead-pool guard returns before it ever announces.
+     * shared health was last full — the fall that ended the life. The summary is deferred to the death
+     * sync so the chat reads in order: first the death message pointing at who to blame, then the
+     * summary.
      */
     public static void deathSummaryAnnouncedOnSharedDeath(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -937,12 +933,22 @@ public final class SharedLifeGameTests {
                 a.player().invulnerableTime = 0;
                 a.player().hurt(helper.getLevel().damageSources().generic(), 20f);
 
+                Main.INSTANCE.getServerHandler().onServerTick(); // the death sync announces the summary
+
                 List<String> messages = drainSystemMessages(a.channel());
                 String expectedHearts = HEARTS_FORMAT.format(10.0); // the full 20-point fall
-                helper.assertTrue(messages.stream().anyMatch(message ->
-                                message.contains(name) && message.contains(expectedHearts)),
+                int deathIndex = messages.indexOf(name + " died"); // vanilla's own death broadcast
+                int summaryIndex = -1;
+                for (int i = 0; i < messages.size(); i++) {
+                    if (messages.get(i).contains(name) && messages.get(i).contains(expectedHearts)) {
+                        summaryIndex = i;
+                    }
+                }
+                helper.assertTrue(summaryIndex >= 0,
                         "expected a death summary crediting " + name + " with " + expectedHearts
                                 + "❤, but got " + messages);
+                helper.assertTrue(deathIndex >= 0 && deathIndex < summaryIndex,
+                        "the death message should arrive before the summary, but got " + messages);
             } finally {
                 removeRealPlayers(helper, a.player());
             }
@@ -953,8 +959,6 @@ public final class SharedLifeGameTests {
     /**
      * The death summary counts only the fall since the shared health was last full: damage healed
      * back to full is forgotten.
-     *
-     * <p>Known red: same cause as {@link #deathSummaryAnnouncedOnSharedDeath}.
      */
     public static void deathSummaryCountsSinceLastFullHealth(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
@@ -973,6 +977,8 @@ public final class SharedLifeGameTests {
 
                 a.player().invulnerableTime = 0;
                 a.player().hurt(helper.getLevel().damageSources().generic(), 20f);
+
+                Main.INSTANCE.getServerHandler().onServerTick(); // the death sync announces the summary
 
                 List<String> messages = drainSystemMessages(a.channel());
                 String expectedHearts = HEARTS_FORMAT.format(10.0); // only the final 20-point fall
@@ -1003,6 +1009,8 @@ public final class SharedLifeGameTests {
 
                 a.player().invulnerableTime = 0;
                 a.player().hurt(helper.getLevel().damageSources().generic(), 20f);
+
+                Main.INSTANCE.getServerHandler().onServerTick(); // the death sync would announce here
 
                 List<String> messages = drainSystemMessages(a.channel());
                 helper.assertTrue(messages.stream().noneMatch(message -> message.contains("❤")),
@@ -1041,18 +1049,19 @@ public final class SharedLifeGameTests {
      * {@code seed}'s current health/food/experience.
      */
     private static void seedPoolFrom(ServerPlayer seed) {
-        killPool(seed);
+        killPool(seed.level().getServer());
         Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(seed); // pool dead -> re-seed from this player
     }
 
     /**
-     * Forces the shared pool dead, with health sharing temporarily on so {@code killBy} applies
-     * regardless of the test's toggles.
+     * Forces the shared pool dead by restoring a dead saved state — deliberately not through the death
+     * hook: {@code killBy} is a real total death that kills every registered player, so it would wipe
+     * out live players this helper is only meant to reset the pool around.
      */
-    private static void killPool(ServerPlayer agent) {
-        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
-            Main.INSTANCE.getPlayerHandler().onPlayerDeath(agent);
-        }
+    private static void killPool(MinecraftServer server) {
+        var deadState = new CompoundTag();
+        deadState.putFloat("health", 0f);
+        PersistenceTestSupport.restore(PersistenceTestSupport.find(server), deadState);
     }
 
     /**
@@ -1061,7 +1070,7 @@ public final class SharedLifeGameTests {
      * it fresh through the mod's real join logic.
      */
     private static void resetPool(GameTestHelper helper) {
-        killPool(spawnFake(helper, 20f));
+        killPool(helper.getLevel().getServer());
     }
 
     /** A {@link #spawnRealPlayer real player} together with its embedded channel, holding the packets sent to it. */

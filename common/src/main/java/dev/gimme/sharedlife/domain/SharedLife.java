@@ -179,11 +179,13 @@ public class SharedLife {
         setExperienceLevels(tag.getInt("experienceLevel"));
         foodData.readAdditionalSaveData(tag.getCompound("food"));
 
+        damageTakenSinceFullHealth.clear();
         resetPreviousStats();
         LOG.debug("Loaded shared life saved with the world: {}", this);
     }
 
     public void tick() {
+        syncDeath();
         tickHunger();
         tickCombinedNaturalRegen();
         syncHealth();
@@ -254,15 +256,20 @@ public class SharedLife {
         }
     }
 
+    /**
+     * Cascades a shared death out to everyone, and announces the death summary.
+     */
+    private void syncDeath() {
+        if (!isDead()) return;
+
+        getLiveSharedDeathPlayers().forEach(this::killPlayer);
+        announceDeathSummary();
+    }
+
     private void syncHealth() {
         getLiveSharedHealthPlayers().forEach(player -> {
             var healthChange = getHealth() - player.getHealth();
             if (healthChange == 0) return;
-
-            if (getHealth() <= 0) {
-                killPlayer(player);
-                return;
-            }
 
             player.setHealth(getHealth());
             player.connection.send(new ClientboundSetHealthPacket(player.getHealth(), player.getFoodData().getFoodLevel(), player.getFoodData().getSaturationLevel()));
@@ -335,20 +342,20 @@ public class SharedLife {
     }
 
     /**
-     * Ends the shared life due to the given player's death.
+     * Ends the shared life due to the given player's death. The next tick's {@link #syncDeath} carries the death out to
+     * everyone else so everything happens in the right order.
      */
     public void killBy(@NotNull ServerPlayer deadPlayer) {
         if (isDead()) return;
         if (!Players.isSharedDeathEnabled(deadPlayer)) return;
 
         setHealth(0);
-        announceDeathSummary();
         LOG.debug("{} has caused shared life death.", deadPlayer.getName().getString());
     }
 
     /**
-     * Announces how much damage each player took since the shared health was last full — the fall that ended
-     * the life — then starts a fresh count.
+     * Announces how much damage each player took since the shared health was last full, then starts a fresh count.
+     * Starting fresh also keeps the dead pool's repeated syncs from announcing more than once.
      */
     private void announceDeathSummary() {
         var damageEntries = damageTakenSinceFullHealth.entrySet().stream()
@@ -423,6 +430,10 @@ public class SharedLife {
     private Stream<ServerPlayer> getLiveSharedHealthPlayers() {
         return server.getPlayerList().getPlayers().stream()
                 .filter(player -> !player.isDeadOrDying() && Players.isSharedHealthEnabled(player));
+    }
+    private Stream<ServerPlayer> getLiveSharedDeathPlayers() {
+        return server.getPlayerList().getPlayers().stream()
+                .filter(player -> !player.isDeadOrDying() && Players.isSharedDeathEnabled(player));
     }
     private Stream<ServerPlayer> getLiveSharedHungerPlayers() {
         return server.getPlayerList().getPlayers().stream()

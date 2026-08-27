@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `shareDeath` now defaults to disabled. Death sharing still implicitly applies while `shareHealth`
+  is enabled, so the default experience is unchanged; existing config files keep their saved value.
+
+### Fixed
+
+- Fixed `shareDeath` doing nothing while `shareHealth` was disabled: one player's death now kills
+  everyone even when only death sharing is enabled
+- Fixed the death summary never being announced when a death ended the shared life. It arrives right
+  after the death messages.
+
 ## [v1.21.1-0.2.1] - 2026-08-26
 
 ### Added
