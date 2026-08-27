@@ -1,5 +1,9 @@
 package dev.gimme.sharedlife.neoforge.gametest;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 import dev.gimme.sharedlife.domain.util.Constants;
 import dev.gimme.sharedlife.gametest.SharedLifeGameTests;
 import net.minecraft.gametest.framework.GameTest;
@@ -54,8 +58,18 @@ public final class NeoForgeGameTests {
     }
 
     @GameTest(template = EMPTY)
+    public void totemDoesNotSaveCascadedPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.totemDoesNotSaveCascadedPlayers(helper);
+    }
+
+    @GameTest(template = EMPTY)
     public void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
         SharedLifeGameTests.shareDeathCascadesWithoutSharedHealth(helper);
+    }
+
+    @GameTest(template = EMPTY)
+    public void deathNotSharedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.deathNotSharedWhenDisabled(helper);
     }
 
     @GameTest(template = EMPTY)
@@ -155,6 +169,11 @@ public final class NeoForgeGameTests {
     }
 
     @GameTest(template = EMPTY)
+    public void savedStateRestoresHungerAndExperience(GameTestHelper helper) {
+        SharedLifeGameTests.savedStateRestoresHungerAndExperience(helper);
+    }
+
+    @GameTest(template = EMPTY)
     public void damageMessageAnnouncedWithSource(GameTestHelper helper) {
         SharedLifeGameTests.damageMessageAnnouncedWithSource(helper);
     }
@@ -182,5 +201,15 @@ public final class NeoForgeGameTests {
     @GameTest(template = EMPTY)
     public void deathSummarySilencedWhenDisabled(GameTestHelper helper) {
         SharedLifeGameTests.deathSummarySilencedWhenDisabled(helper);
+    }
+
+    /** Wiring guard: every shared test body must have a delegate in this class. */
+    @GameTest(template = EMPTY)
+    public void allSharedTestsRegistered(GameTestHelper helper) {
+        SharedLifeGameTests.allSharedTestsRegistered(helper,
+                Arrays.stream(NeoForgeGameTests.class.getDeclaredMethods())
+                        .filter(method -> method.isAnnotationPresent(GameTest.class))
+                        .map(Method::getName)
+                        .collect(Collectors.toSet()));
     }
 }

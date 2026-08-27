@@ -5,6 +5,10 @@ import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
 /**
  * Fabric test wiring, scanned via the {@code fabric-gametest} entrypoint: one {@link GameTest} delegate
  * per shared test, run on the API's built-in {@link FabricGameTest#EMPTY_STRUCTURE}. Instantiated
@@ -48,8 +52,18 @@ public final class FabricGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
+    public void totemDoesNotSaveCascadedPlayers(GameTestHelper helper) {
+        SharedLifeGameTests.totemDoesNotSaveCascadedPlayers(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
     public void shareDeathCascadesWithoutSharedHealth(GameTestHelper helper) {
         SharedLifeGameTests.shareDeathCascadesWithoutSharedHealth(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void deathNotSharedWhenDisabled(GameTestHelper helper) {
+        SharedLifeGameTests.deathNotSharedWhenDisabled(helper);
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
@@ -149,6 +163,11 @@ public final class FabricGameTests implements FabricGameTest {
     }
 
     @GameTest(template = EMPTY_STRUCTURE)
+    public void savedStateRestoresHungerAndExperience(GameTestHelper helper) {
+        SharedLifeGameTests.savedStateRestoresHungerAndExperience(helper);
+    }
+
+    @GameTest(template = EMPTY_STRUCTURE)
     public void damageMessageAnnouncedWithSource(GameTestHelper helper) {
         SharedLifeGameTests.damageMessageAnnouncedWithSource(helper);
     }
@@ -176,5 +195,15 @@ public final class FabricGameTests implements FabricGameTest {
     @GameTest(template = EMPTY_STRUCTURE)
     public void deathSummarySilencedWhenDisabled(GameTestHelper helper) {
         SharedLifeGameTests.deathSummarySilencedWhenDisabled(helper);
+    }
+
+    /** Wiring guard: every shared test body must have a delegate in this class. */
+    @GameTest(template = EMPTY_STRUCTURE)
+    public void allSharedTestsRegistered(GameTestHelper helper) {
+        SharedLifeGameTests.allSharedTestsRegistered(helper,
+                Arrays.stream(FabricGameTests.class.getDeclaredMethods())
+                        .filter(method -> method.isAnnotationPresent(GameTest.class))
+                        .map(Method::getName)
+                        .collect(Collectors.toSet()));
     }
 }

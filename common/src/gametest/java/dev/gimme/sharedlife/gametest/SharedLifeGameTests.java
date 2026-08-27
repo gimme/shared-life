@@ -26,10 +26,16 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.GameType;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Loader-agnostic, end-to-end game test bodies, wired into {@code FabricGameTests} and
@@ -255,6 +261,36 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    /**
+     * The cascade's {@code shared_life} damage bypasses totems (via the {@code bypasses_invulnerability}
+     * tag): a totem held by a <em>bystander</em> must not eat the cascade — only the fatally hit
+     * player's own totem can save the shared life.
+     */
+    public static void totemDoesNotSaveCascadedPlayers(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                b.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.TOTEM_OF_UNDYING));
+
+                a.invulnerableTime = 0;
+                a.hurt(helper.getLevel().damageSources().generic(), 1000f);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                helper.assertTrue(b.isDeadOrDying(),
+                        "B's totem should not block the death cascade, but B had health " + b.getHealth());
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
     // ---- death sharing without shared health ----
 
     /**
@@ -280,6 +316,34 @@ public final class SharedLifeGameTests {
                         "A should have died from the fatal blow, but had health " + a.getHealth());
                 helper.assertTrue(b.isDeadOrDying(),
                         "B should have been killed by the shared death, but had health " + b.getHealth());
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
+    /** With health and death sharing both off, one player's death leaves everyone else alive. */
+    public static void deathNotSharedWhenDisabled(GameTestHelper helper) {
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, false);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_DEATH, false);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, false);
+             var ignored4 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, false)) {
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                a.invulnerableTime = 0;
+                a.hurt(helper.getLevel().damageSources().generic(), 1000f);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                helper.assertTrue(a.isDeadOrDying(),
+                        "A should have died from the fatal blow, but had health " + a.getHealth());
+                helper.assertTrue(!b.isDeadOrDying(),
+                        "death sharing is off, so B should have survived A's death, but B was dying");
+                assertApproxHealth(helper, b, 20f);
             } finally {
                 removeRealPlayers(helper, a, b);
             }
@@ -810,6 +874,56 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    /**
+     * The saved state carries the shared hunger and experience too: a restore brings back food,
+     * saturation and levels, the rejoin syncs every player onto them — as a restart does — and the
+     * next tick's delta syncs hold them steady (pinning {@code load()}'s previous-stats reset)
+     * instead of re-counting the restored values as fresh changes.
+     */
+    public static void savedStateRestoresHungerAndExperience(GameTestHelper helper) {
+        MinecraftServer server = helper.getLevel().getServer();
+        try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true);
+             var ignored2 = ConfigTestSupport.override(ConfigTestSupport.SHARE_HUNGER, true);
+             var ignored3 = ConfigTestSupport.override(ConfigTestSupport.SHARE_EXPERIENCE, true)) {
+
+            SharedLifePersistence persistence = PersistenceTestSupport.find(server);
+
+            resetPool(helper);
+            ServerPlayer a = spawnRealPlayer(helper);
+            ServerPlayer b = spawnRealPlayer(helper);
+            try {
+                a.setHealth(10);
+                setFood(a, 12, 2f);
+                a.giveExperienceLevels(4);
+                seedPoolFrom(a); // pool: health 10, food 12, saturation 2.0, 4 levels
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
+
+                CompoundTag saved = PersistenceTestSupport.save(persistence, server);
+
+                b.setHealth(20);
+                setFood(b, 20, 0f);
+                b.giveExperienceLevels(-4);
+                seedPoolFrom(b); // a different life takes over, so the restore has something to replace
+
+                PersistenceTestSupport.restore(persistence, saved);
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(a); // a restart re-joins every player
+                Main.INSTANCE.getPlayerHandler().onPlayerJoinLevel(b);
+
+                Main.INSTANCE.getServerHandler().onServerTick();
+
+                for (ServerPlayer player : List.of(a, b)) {
+                    assertApproxHealth(helper, player, 10f);
+                    assertFood(helper, player, 12, 2f);
+                    helper.assertTrue(player.experienceLevel == 4,
+                            "expected the restored 4 shared levels, but the player had " + player.experienceLevel);
+                }
+            } finally {
+                removeRealPlayers(helper, a, b);
+            }
+        }
+        helper.succeed();
+    }
+
     /** After a death, the next player to join re-seeds the pool from their own state. */
     public static void deathReseedsFromNextJoiner(GameTestHelper helper) {
         try (var ignored = ConfigTestSupport.override(ConfigTestSupport.SHARE_HEALTH, true)) {
@@ -1017,6 +1131,34 @@ public final class SharedLifeGameTests {
         helper.succeed();
     }
 
+    // ---- wiring guard ----
+
+    /**
+     * Asserts the loader's wiring registers every public test body in this class, so a body added here
+     * but forgotten in one loader's registry fails loudly instead of silently never running. Each
+     * loader passes the names its registry wires up; the comparison ignores case and underscores, so
+     * snake_case registry names match the camelCase bodies as-is.
+     */
+    public static void allSharedTestsRegistered(GameTestHelper helper, Set<String> registeredNames) {
+        var registered = registeredNames.stream()
+                .map(SharedLifeGameTests::normalizeTestName)
+                .collect(Collectors.toSet());
+        var missing = Arrays.stream(SharedLifeGameTests.class.getDeclaredMethods())
+                .filter(method -> Modifier.isPublic(method.getModifiers()) && Modifier.isStatic(method.getModifiers()))
+                .filter(method -> method.getParameterCount() == 1 && method.getParameterTypes()[0] == GameTestHelper.class)
+                .map(Method::getName)
+                .filter(name -> !registered.contains(normalizeTestName(name)))
+                .sorted()
+                .toList();
+        helper.assertTrue(missing.isEmpty(),
+                "shared test bodies missing from this loader's wiring: " + missing);
+        helper.succeed();
+    }
+
+    private static String normalizeTestName(String name) {
+        return name.replace("_", "").toLowerCase(Locale.ROOT);
+    }
+
     // ---- helpers ----
 
     /**
@@ -1185,6 +1327,13 @@ public final class SharedLifeGameTests {
     private static void setFood(ServerPlayer player, int foodLevel, float saturation) {
         player.getFoodData().setFoodLevel(foodLevel);
         player.getFoodData().setSaturation(saturation);
+    }
+
+    private static void assertFood(GameTestHelper helper, ServerPlayer player, int foodLevel, float saturation) {
+        helper.assertTrue(player.getFoodData().getFoodLevel() == foodLevel,
+                "expected shared food " + foodLevel + " but player had " + player.getFoodData().getFoodLevel());
+        helper.assertTrue(Math.abs(player.getFoodData().getSaturationLevel() - saturation) < 0.01f,
+                "expected shared saturation " + saturation + " but player had " + player.getFoodData().getSaturationLevel());
     }
 
     private static void assertExhaustion(GameTestHelper helper, ServerPlayer player, float expected) {
